@@ -48,17 +48,33 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; overflow: hidden; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            overflow: hidden; 
+        }
+        .custom-scrollbar::-webkit-scrollbar { 
+            width: 6px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-track { 
+            background: transparent; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background-color: #cbd5e1; 
+            border-radius: 20px; 
+        }
         
         .resize-handle {
             position: absolute;
-            bottom: 0; left: 0; right: 0; height: 8px; cursor: ns-resize;
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            height: 8px; 
+            cursor: ns-resize;
             background: transparent;
         }
-        .resize-handle:hover { background: rgba(0,0,0,0.1); }
+        .resize-handle:hover { 
+            background: rgba(0,0,0,0.1); 
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 h-screen w-screen overflow-hidden">
@@ -197,7 +213,9 @@
             const results = [];
             selectedCountries.forEach(code => {
                 const data = HOLIDAYS_DB[code];
-                if (data && data.fixed && data.fixed[key]) results.push({ name: data.fixed[key], country: code });
+                if (data && data.fixed && data.fixed[key]) {
+                    results.push({ name: data.fixed[key], country: code });
+                }
             });
             return results;
         };
@@ -356,7 +374,9 @@
                     const newText = value.slice(0, lastSpaceIndex) + suggestion + ' ' + textAfterCursor;
                     onChange({ target: { value: newText } });
                     setShowSuggestions(false);
-                    if (inputRef.current) inputRef.current.focus();
+                    if (inputRef.current) {
+                        inputRef.current.focus();
+                    }
                 }
             };
 
@@ -390,7 +410,7 @@
             );
         };
 
-        // --- Components ---
+        // --- UI Components ---
 
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
@@ -415,7 +435,6 @@
             return (
                 <Modal isOpen={isOpen} onClose={onClose} title="Settings">
                     <div className="space-y-6">
-                        {/* Google Calendar Config */}
                         <div>
                             <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Key size={16} /> API Credentials</h4>
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
@@ -583,7 +602,7 @@
             );
         };
 
-        const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, onSlotClick, onUpdateEvent }) => {
+const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, onSlotClick, onUpdateEvent }) => {
             const days = eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) });
             const hours = Array.from({ length: 24 }, (_, i) => i);
             const PIXELS_PER_HOUR = 60;
@@ -591,7 +610,7 @@
             
             // --- Algorithm to calculate overlap layout ---
             const calculateEventLayout = (dayEvents) => {
-                // 1. Sort events by start time
+                // 1. Sort events by start time, then duration
                 const sortedEvents = [...dayEvents].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
                 const lanes = [];
 
@@ -645,9 +664,11 @@
             };
 
             const handleResizeStart = (e, event) => {
-                e.stopPropagation(); e.preventDefault();
+                e.stopPropagation(); 
+                e.preventDefault();
                 const startY = e.clientY;
                 const originalEnd = new Date(event.end);
+                
                 const handleMouseMove = (moveEvent) => {
                     const deltaY = moveEvent.clientY - startY;
                     const deltaMinutes = (deltaY / PIXELS_PER_HOUR) * 60;
@@ -655,15 +676,18 @@
                     if (snappedDelta !== 0) {
                         const newEnd = new Date(originalEnd);
                         newEnd.setMinutes(originalEnd.getMinutes() + snappedDelta);
+                        // Minimum 15 mins
                         if (differenceInMinutes(newEnd, new Date(event.start)) >= 15) {
                             onUpdateEvent({ ...event, end: newEnd });
                         }
                     }
                 };
+                
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
                 };
+                
                 window.addEventListener('mousemove', handleMouseMove);
                 window.addEventListener('mouseup', handleMouseUp);
             };
@@ -708,6 +732,7 @@
 
                         {days.map(day => {
                             const dayEvents = events.filter(e => isSameDay(new Date(e.start), day));
+                            // Apply layout algorithm
                             const { sortedEvents, laneCount } = calculateEventLayout(dayEvents);
                             const isSun = getDay(day) === 0;
                             
@@ -735,8 +760,6 @@
                                         const isDone = linkedTask?.completed;
                                         
                                         // Calculate side-by-side positioning
-                                        // We check how many other events overlap this one to determine width, but 
-                                        // laneCount (max overlapping columns) is often simpler for a consistent grid
                                         const widthPercent = 100 / (laneCount || 1);
                                         const leftPercent = (event.laneIndex || 0) * widthPercent;
 
@@ -773,6 +796,7 @@
         // --- Main App ---
 
         function App() {
+            // State
             const [tasks, setTasks] = useLocalStorage('ai-planner-tasks', []);
             const [events, setEvents] = useLocalStorage('ai-planner-events', []);
             const [selectedCountries, setSelectedCountries] = useLocalStorage('ai-planner-countries', ['US']);
@@ -820,10 +844,19 @@
                 const google = window.google;
 
                 gapi.load('client', async () => {
-                    await gapi.client.init({
-                        apiKey: googleConfig.apiKey,
-                        discoveryDocs: [DISCOVERY_DOC],
-                    });
+                    try {
+                        await gapi.client.init({
+                            apiKey: googleConfig.apiKey,
+                            discoveryDocs: [DISCOVERY_DOC],
+                        });
+                        // Load calendar specifically if not loaded
+                        if (!gapi.client.calendar) {
+                            await gapi.client.load('calendar', 'v3');
+                        }
+                    } catch (e) {
+                        console.error("GAPI Init Error", e);
+                        setAiMessage("Error initializing Google API. Check keys.");
+                    }
                 });
 
                 tokenClient.current = google.accounts.oauth2.initTokenClient({
@@ -832,6 +865,7 @@
                     callback: async (resp) => {
                         if (resp.error) {
                             console.error(resp);
+                            setAiMessage("Google Auth Error: " + resp.error.message);
                             return;
                         }
                         setGoogleConnected(true);
@@ -843,7 +877,11 @@
             useEffect(() => { initGoogleAPI(); }, [googleConfig]);
 
             const listUpcomingEvents = async () => {
-                const gapi = window.gapi;
+                if (typeof window.gapi === 'undefined' || !window.gapi.client) {
+                    setAiMessage("Google API not fully loaded yet.");
+                    return;
+                }
+                
                 try {
                     const request = {
                         'calendarId': 'primary',
@@ -853,7 +891,7 @@
                         'maxResults': 50,
                         'orderBy': 'startTime',
                     };
-                    const response = await gapi.client.calendar.events.list(request);
+                    const response = await window.gapi.client.calendar.events.list(request);
                     const realEvents = response.result.items.map(item => ({
                         id: item.id,
                         title: item.summary,
@@ -893,9 +931,11 @@
                     if (tokenClient.current) {
                         tokenClient.current.requestAccessToken({ prompt: 'consent' });
                     } else {
-                        // Retry init if client not ready
                         initGoogleAPI();
-                        setTimeout(() => { if (tokenClient.current) tokenClient.current.requestAccessToken({ prompt: 'consent' }); }, 500);
+                        // Retry shortly if not ready
+                        setTimeout(() => { 
+                            if (tokenClient.current) tokenClient.current.requestAccessToken({ prompt: 'consent' }); 
+                        }, 1000);
                         setAiMessage("Initializing Google Client...");
                     }
                 }
@@ -931,6 +971,8 @@
                 }, 900000); 
                 return () => clearInterval(interval);
             }, [events, tasks, googleConnected]);
+
+            // -- Handlers --
 
             const handleOverdueAction = (action) => {
                 if (!overdueTask) return;
