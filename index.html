@@ -495,6 +495,15 @@
             const PIXELS_PER_HOUR = 60;
             const SNAP_MINUTES = 15;
             
+            // Auto-scroll to 8 AM on mount
+            useEffect(() => {
+                const scrollContainer = document.getElementById('week-view-scroll');
+                if (scrollContainer) {
+                    // 8 AM * 60px = 480px
+                    scrollContainer.scrollTop = 480;
+                }
+            }, []);
+            
             const calculateEventLayout = (dayEvents) => {
                 const sortedEvents = [...dayEvents].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
                 const lanes = [];
@@ -581,7 +590,7 @@
                             );
                         })}
                     </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar relative flex">
+                    <div id="week-view-scroll" className="flex-1 overflow-y-auto custom-scrollbar relative flex">
                         <div className="w-16 flex-shrink-0 bg-slate-50 border-r border-slate-200 text-xs text-slate-400 font-medium">
                             {hours.map(hour => (
                                 <div key={hour} className="relative border-b border-transparent" style={{ height: `${PIXELS_PER_HOUR}px` }}>
@@ -669,7 +678,11 @@
                         }
                     } catch (e) {
                         console.error("GAPI Init Error", e);
-                        setAiMessage(`Error initializing Google API: ${e.result?.error?.message || 'Check Keys'}`);
+                        if (e.result && e.result.error && e.result.error.code === 403) {
+                            setAiMessage("Error 403: Please enable Google Calendar API in Cloud Console.");
+                        } else {
+                            setAiMessage(`Error initializing Google API: ${e.result?.error?.message || 'Check Keys/Enable API'}`);
+                        }
                     }
                 });
 
@@ -702,7 +715,19 @@
                 }
                 
                 try {
-                    const request = { 'calendarId': 'primary', 'timeMin': (new Date()).toISOString(), 'showDeleted': false, 'singleEvents': true, 'maxResults': 50, 'orderBy': 'startTime' };
+                    // FIXED: Updated timeMin to fetch from 30 days ago instead of "now"
+                    // This ensures past events in the current week are visible
+                    const startRange = new Date();
+                    startRange.setDate(startRange.getDate() - 30);
+
+                    const request = { 
+                        'calendarId': 'primary', 
+                        'timeMin': startRange.toISOString(), // Fetch from 30 days ago
+                        'showDeleted': false, 
+                        'singleEvents': true, 
+                        'maxResults': 100, 
+                        'orderBy': 'startTime' 
+                    };
                     const response = await window.gapi.client.calendar.events.list(request);
                     const realEvents = response.result.items.map(item => ({
                         id: item.id,
@@ -718,7 +743,14 @@
                         return [...prev, ...newEvents];
                     });
                     setAiMessage(`Synced ${realEvents.length} events from Google.`);
-                } catch (err) { setAiMessage("Failed to fetch Google Events."); console.error(err); }
+                } catch (err) { 
+                    console.error(err);
+                    if (err.status === 403) {
+                         setAiMessage("Error 403: Please enable Google Calendar API in Cloud Console.");
+                    } else {
+                         setAiMessage("Failed to fetch Google Events."); 
+                    }
+                }
             };
 
             const handleToggleGoogle = () => {
