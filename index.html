@@ -48,33 +48,17 @@
     </script>
 
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            overflow: hidden; 
-        }
-        .custom-scrollbar::-webkit-scrollbar { 
-            width: 6px; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-track { 
-            background: transparent; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-            background-color: #cbd5e1; 
-            border-radius: 20px; 
-        }
+        body { font-family: 'Inter', sans-serif; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
         
         .resize-handle {
             position: absolute;
-            bottom: 0; 
-            left: 0; 
-            right: 0; 
-            height: 8px; 
-            cursor: ns-resize;
+            bottom: 0; left: 0; right: 0; height: 8px; cursor: ns-resize;
             background: transparent;
         }
-        .resize-handle:hover { 
-            background: rgba(0,0,0,0.1); 
-        }
+        .resize-handle:hover { background: rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 h-screen w-screen overflow-hidden">
@@ -146,7 +130,6 @@
         const fetchSuggestions = async (query) => {
             if (!query || query.length < 2) return [];
             try {
-                // Fetch from Datamuse (free, open source data)
                 const res = await fetch(`https://api.datamuse.com/sug?s=${query}&max=5`);
                 const data = await res.json();
                 return data.map(item => item.word);
@@ -213,9 +196,7 @@
             const results = [];
             selectedCountries.forEach(code => {
                 const data = HOLIDAYS_DB[code];
-                if (data && data.fixed && data.fixed[key]) {
-                    results.push({ name: data.fixed[key], country: code });
-                }
+                if (data && data.fixed && data.fixed[key]) results.push({ name: data.fixed[key], country: code });
             });
             return results;
         };
@@ -231,18 +212,13 @@
 
             const getSuggestions = useCallback(debounce(async (query) => {
                 if (!query) return;
-                
-                // 1. Local history
                 const localMatches = Object.keys(wordCounts)
                     .filter(w => w.toLowerCase().startsWith(query.toLowerCase()) && w.toLowerCase() !== query.toLowerCase())
                     .sort((a,b) => wordCounts[b] - wordCounts[a]);
-
-                // 2. Remote (Datamuse) - good for common names too
                 let remoteMatches = [];
                 if (localMatches.length < 5) {
                     remoteMatches = await fetchSuggestions(query);
                 }
-
                 setSuggestions([...new Set([...localMatches, ...remoteMatches])].slice(0, 5));
             }, 300), [wordCounts]);
 
@@ -264,7 +240,7 @@
             const handleTagClick = (tagToRemove) => {
                 const newTags = tags.filter(t => t !== tagToRemove);
                 onChange({ target: { value: newTags.join(',') } });
-                setInputValue(tagToRemove); // Edit mode
+                setInputValue(tagToRemove); 
             };
 
             const handleInputChange = (e) => {
@@ -283,33 +259,16 @@
             return (
                 <div className={`flex flex-wrap gap-2 p-2 border rounded-lg bg-white focus-within:ring-2 ring-indigo-500/20 ${className}`}>
                     {tags.map((tag, i) => (
-                        <span 
-                            key={i} 
-                            onClick={() => handleTagClick(tag)}
-                            className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-xs font-medium cursor-pointer hover:bg-indigo-200 flex items-center gap-1 transition-colors"
-                        >
+                        <span key={i} onClick={() => handleTagClick(tag)} className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-xs font-medium cursor-pointer hover:bg-indigo-200 flex items-center gap-1 transition-colors">
                             {tag} <X size={10} />
                         </span>
                     ))}
                     <div className="relative flex-1 min-w-[60px]">
-                        <input
-                            type="text"
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            placeholder={tags.length === 0 ? placeholder : ''}
-                            className="w-full outline-none text-sm bg-transparent"
-                        />
+                        <input type="text" value={inputValue} onChange={handleInputChange} onKeyDown={handleKeyDown} placeholder={tags.length === 0 ? placeholder : ''} className="w-full outline-none text-sm bg-transparent" />
                         {suggestions.length > 0 && (
                             <ul className="absolute left-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-48 text-sm">
                                 {suggestions.map(s => (
-                                    <li 
-                                        key={s} 
-                                        onClick={() => selectSuggestion(s)}
-                                        className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-slate-700"
-                                    >
-                                        {s}
-                                    </li>
+                                    <li key={s} onClick={() => selectSuggestion(s)} className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-slate-700">{s}</li>
                                 ))}
                             </ul>
                         )}
@@ -324,11 +283,9 @@
             const [cursorPos, setCursorPos] = useState(0);
             const inputRef = useRef(null);
 
-            // Debounce the API call
             const getRemoteSuggestions = useCallback(debounce(async (word) => {
                 const results = await fetchSuggestions(word);
                 setSuggestions(prev => {
-                    // Combine with existing local suggestions, prioritize local
                     const combined = [...prev, ...results];
                     return [...new Set(combined)].slice(0, 5);
                 });
@@ -346,7 +303,6 @@
                 if (match) {
                     const currentWord = match[1];
                     if (currentWord.length >= 2) {
-                        // 1. Local Suggestions
                         const localMatches = Object.entries(wordCounts)
                             .filter(([word]) => word.toLowerCase().startsWith(currentWord.toLowerCase()) && word.toLowerCase() !== currentWord.toLowerCase())
                             .sort((a, b) => b[1] - a[1])
@@ -355,8 +311,6 @@
                         
                         setSuggestions(localMatches);
                         setShowSuggestions(true);
-
-                        // 2. Fetch Remote
                         getRemoteSuggestions(currentWord);
                         return;
                     }
@@ -367,40 +321,23 @@
             const handleSelect = (suggestion) => {
                 const textBeforeCursor = value.slice(0, cursorPos);
                 const textAfterCursor = value.slice(cursorPos);
-                
                 const lastSpaceIndex = textBeforeCursor.search(/(\S+)$/);
                 if (lastSpaceIndex !== -1) {
                     const newText = value.slice(0, lastSpaceIndex) + suggestion + ' ' + textAfterCursor;
                     onChange({ target: { value: newText } });
                     setShowSuggestions(false);
-                    if (inputRef.current) {
-                        inputRef.current.focus();
-                    }
+                    if (inputRef.current) inputRef.current.focus();
                 }
             };
 
             return (
                 <div className="relative w-full">
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={value}
-                        onChange={handleChange}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        placeholder={placeholder}
-                        className={className}
-                        autoFocus={autoFocus}
-                    />
+                    <input ref={inputRef} type="text" value={value} onChange={handleChange} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} placeholder={placeholder} className={className} autoFocus={autoFocus} />
                     {showSuggestions && suggestions.length > 0 && (
                         <ul className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden text-sm">
                             {suggestions.map(s => (
-                                <li 
-                                    key={s} 
-                                    onClick={() => handleSelect(s)}
-                                    className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-slate-700 flex justify-between group"
-                                >
-                                    <span>{s}</span>
-                                    <span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100">Tab</span>
+                                <li key={s} onClick={() => handleSelect(s)} className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-slate-700 flex justify-between group">
+                                    <span>{s}</span><span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100">Tab</span>
                                 </li>
                             ))}
                         </ul>
@@ -415,11 +352,7 @@
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]"
-                    >
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
                         <div className="flex justify-between items-center p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-800">{title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"><X size={20} /></button>
@@ -439,27 +372,14 @@
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
                                 <div>
                                     <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Google Client ID</label>
-                                    <input 
-                                        type="text" 
-                                        value={googleConfig.clientId}
-                                        onChange={(e) => onUpdateGoogleConfig('clientId', e.target.value)}
-                                        placeholder="e.g., 123...apps.googleusercontent.com"
-                                        className="w-full text-xs p-2 border rounded-lg"
-                                    />
+                                    <input type="text" value={googleConfig.clientId} onChange={(e) => onUpdateGoogleConfig('clientId', e.target.value)} placeholder="e.g., 123...apps.googleusercontent.com" className="w-full text-xs p-2 border rounded-lg" />
                                 </div>
                                 <div>
                                     <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Google API Key</label>
-                                    <input 
-                                        type="password" 
-                                        value={googleConfig.apiKey}
-                                        onChange={(e) => onUpdateGoogleConfig('apiKey', e.target.value)}
-                                        placeholder="AIza..."
-                                        className="w-full text-xs p-2 border rounded-lg"
-                                    />
+                                    <input type="password" value={googleConfig.apiKey} onChange={(e) => onUpdateGoogleConfig('apiKey', e.target.value)} placeholder="AIza..." className="w-full text-xs p-2 border rounded-lg" />
                                 </div>
                             </div>
                         </div>
-
                         <div>
                             <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><CalendarIcon size={16} /> Integrations</h4>
                             <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white">
@@ -470,15 +390,11 @@
                                         <div className="text-xs text-slate-500">{googleConnected ? 'Connected' : 'Sync your events'}</div>
                                     </div>
                                 </div>
-                                <button 
-                                    onClick={onToggleGoogle}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${googleConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                                >
+                                <button onClick={onToggleGoogle} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${googleConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
                                     {googleConnected ? 'Disconnect' : 'Connect'}
                                 </button>
                             </div>
                         </div>
-
                         <div>
                             <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Globe size={16} /> Holidays</h4>
                             <div className="grid grid-cols-1 gap-2">
@@ -500,7 +416,6 @@
 
         const WorldClockBar = ({ clocks, onAddClock, onDeleteClock }) => {
             const [currentTime, setCurrentTime] = useState(new Date());
-
             useEffect(() => {
                 const timer = setInterval(() => setCurrentTime(new Date()), 1000);
                 return () => clearInterval(timer);
@@ -511,25 +426,13 @@
                     <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
                         {clocks.map((clock, index) => (
                             <div key={clock.id} className="relative group min-w-[100px] flex-1 bg-slate-800 text-white p-3 rounded-xl shadow-md flex flex-col items-center justify-center border border-slate-700">
-                                <button 
-                                    onClick={() => onDeleteClock(clock.id)}
-                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <X size={10} />
-                                </button>
+                                <button onClick={() => onDeleteClock(clock.id)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
                                 <span className="text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">{clock.label}</span>
-                                <span className="text-xl font-bold font-mono">
-                                    {currentTime.toLocaleTimeString('en-US', { timeZone: clock.zone, hour: 'numeric', minute: '2-digit', hour12: true })}
-                                </span>
+                                <span className="text-xl font-bold font-mono">{currentTime.toLocaleTimeString('en-US', { timeZone: clock.zone, hour: 'numeric', minute: '2-digit', hour12: true })}</span>
                             </div>
                         ))}
                         {clocks.length < 3 && (
-                            <button 
-                                onClick={onAddClock}
-                                className="min-w-[40px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors text-slate-400"
-                            >
-                                <Plus size={20} />
-                            </button>
+                            <button onClick={onAddClock} className="min-w-[40px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors text-slate-400"><Plus size={20} /></button>
                         )}
                     </div>
                 </div>
@@ -559,22 +462,13 @@
                             const holidays = getHolidaysForDate(day, selectedCountries);
 
                             return (
-                                <div 
-                                    key={day.toString()} 
-                                    onClick={() => onSlotClick(day, 9)} 
-                                    className={`
-                                        min-h-[80px] border-r border-b border-slate-100 p-1 transition-colors hover:bg-slate-50 relative group cursor-pointer
-                                        ${!isCurrentMonth ? 'bg-slate-50/30' : 'bg-white'} ${isSun ? 'bg-red-50/10' : ''}
-                                    `}
-                                >
+                                <div key={day.toString()} onClick={() => onSlotClick(day, 9)} className={`min-h-[80px] border-r border-b border-slate-100 p-1 transition-colors hover:bg-slate-50 relative group cursor-pointer ${!isCurrentMonth ? 'bg-slate-50/30' : 'bg-white'} ${isSun ? 'bg-red-50/10' : ''}`}>
                                     <div className="flex justify-between items-start px-1 pointer-events-none">
                                         <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-sm' : ''} ${!isToday(day) && isSun ? 'text-red-500' : ''} ${!isToday(day) && !isSun && !isCurrentMonth ? 'text-slate-300' : ''} ${!isToday(day) && !isSun && isCurrentMonth ? 'text-slate-700' : ''}`}>{format(day, 'd')}</span>
                                     </div>
                                     {holidays.length > 0 && (
                                         <div className="mt-0.5 flex flex-wrap gap-1 pointer-events-none">
-                                            {holidays.map((h, i) => (
-                                                <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded truncate w-full block">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</span>
-                                            ))}
+                                            {holidays.map((h, i) => (<span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded truncate w-full block">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</span>))}
                                         </div>
                                     )}
                                     <div className="mt-1 flex flex-col gap-0.5 overflow-hidden max-h-[45px]">
@@ -582,13 +476,7 @@
                                             const linkedTask = tasks.find(t => t.id === ev.taskId);
                                             const isDone = linkedTask?.completed;
                                             return (
-                                                <div 
-                                                    key={ev.id} 
-                                                    onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }}
-                                                    className={`text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${isDone ? 'bg-slate-200 text-slate-500 line-through' : (ev.color || 'bg-blue-100 text-blue-800')}`}
-                                                >
-                                                    {ev.title}
-                                                </div>
+                                                <div key={ev.id} onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }} className={`text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${isDone ? 'bg-slate-200 text-slate-500 line-through' : (ev.color || 'bg-blue-100 text-blue-800')}`}>{ev.title}</div>
                                             );
                                         })}
                                         {dayEvents.length > 3 && <div className="text-[9px] text-slate-400 pl-1 pointer-events-none">+{dayEvents.length - 3} more</div>}
@@ -600,27 +488,147 @@
                 </div>
             );
         };
-// --- Main App ---
+
+        const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, onSlotClick, onUpdateEvent }) => {
+            const days = eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) });
+            const hours = Array.from({ length: 24 }, (_, i) => i);
+            const PIXELS_PER_HOUR = 60;
+            const SNAP_MINUTES = 15;
+            
+            const calculateEventLayout = (dayEvents) => {
+                const sortedEvents = [...dayEvents].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+                const lanes = [];
+                sortedEvents.forEach(event => {
+                    let placed = false;
+                    for (let i = 0; i < lanes.length; i++) {
+                        const lane = lanes[i];
+                        const lastEventInLane = lane[lane.length - 1];
+                        if (!lastEventInLane || lastEventInLane.end <= event.start) {
+                            lane.push(event); event.laneIndex = i; placed = true; break;
+                        }
+                    }
+                    if (!placed) { lanes.push([event]); event.laneIndex = lanes.length - 1; }
+                });
+                return { sortedEvents, laneCount: lanes.length };
+            };
+
+            const handleDrop = (e, day) => {
+                e.preventDefault();
+                const rect = e.currentTarget.getBoundingClientRect();
+                const offsetY = e.clientY - rect.top + e.currentTarget.scrollTop;
+                const rawMinutes = offsetY * (60 / PIXELS_PER_HOUR); 
+                const snappedMinutes = Math.floor(rawMinutes / SNAP_MINUTES) * SNAP_MINUTES;
+                const hour = Math.floor(snappedMinutes / 60);
+                const minutes = snappedMinutes % 60;
+                const taskId = e.dataTransfer.getData('taskId');
+                const eventId = e.dataTransfer.getData('eventId');
+                if (taskId) { onDropTask(taskId, day, hour, minutes); } 
+                else if (eventId) {
+                    const event = events.find(e => e.id === eventId);
+                    if (event) {
+                        const duration = differenceInMinutes(new Date(event.end), new Date(event.start));
+                        const newStart = setMinutes(setHours(new Date(day), hour), minutes);
+                        const newEnd = addDays(newStart, 0);
+                        newEnd.setMinutes(newStart.getMinutes() + duration);
+                        onUpdateEvent({ ...event, start: newStart, end: newEnd });
+                    }
+                }
+            };
+
+            const handleResizeStart = (e, event) => {
+                e.stopPropagation(); e.preventDefault();
+                const startY = e.clientY;
+                const originalEnd = new Date(event.end);
+                const handleMouseMove = (moveEvent) => {
+                    const deltaY = moveEvent.clientY - startY;
+                    const deltaMinutes = (deltaY / PIXELS_PER_HOUR) * 60;
+                    const snappedDelta = Math.round(deltaMinutes / SNAP_MINUTES) * SNAP_MINUTES;
+                    if (snappedDelta !== 0) {
+                        const newEnd = new Date(originalEnd);
+                        newEnd.setMinutes(originalEnd.getMinutes() + snappedDelta);
+                        if (differenceInMinutes(newEnd, new Date(event.start)) >= 15) {
+                            onUpdateEvent({ ...event, end: newEnd });
+                        }
+                    }
+                };
+                const handleMouseUp = () => {
+                    window.removeEventListener('mousemove', handleMouseMove);
+                    window.removeEventListener('mouseup', handleMouseUp);
+                };
+                window.addEventListener('mousemove', handleMouseMove);
+                window.addEventListener('mouseup', handleMouseUp);
+            };
+
+            const handleSlotClickInternal = (e, day, hour) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const offsetY = e.clientY - rect.top; 
+                const minutes = offsetY > (PIXELS_PER_HOUR / 2) ? 30 : 0;
+                onSlotClick(day, hour, null, minutes);
+            };
+
+            return (
+                <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="flex border-b border-slate-200 ml-16">
+                        {days.map(day => {
+                            const isSun = getDay(day) === 0;
+                            const holidays = getHolidaysForDate(day, selectedCountries);
+                            return (
+                                <div key={day.toString()} className={`flex-1 py-3 text-center border-r border-slate-100 last:border-0 ${isSun ? 'bg-red-50/20' : ''}`}>
+                                    <div className={`text-xs font-bold uppercase ${isSun ? 'text-red-500' : 'text-slate-500'}`}>{format(day, 'EEE')}</div>
+                                    <div className={`text-sm font-bold mt-1 inline-block w-8 h-8 leading-8 rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-md' : isSun ? 'text-red-600' : 'text-slate-700'}`}>{format(day, 'd')}</div>
+                                    {holidays.length > 0 && (<div className="flex flex-col gap-0.5 mt-1 px-1">{holidays.map((h, i) => (<div key={i} className="text-[9px] font-medium truncate text-slate-500 bg-slate-100/50 rounded px-1">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</div>))}</div>)}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar relative flex">
+                        <div className="w-16 flex-shrink-0 bg-slate-50 border-r border-slate-200 text-xs text-slate-400 font-medium">
+                            {hours.map(hour => (
+                                <div key={hour} className="relative border-b border-transparent" style={{ height: `${PIXELS_PER_HOUR}px` }}>
+                                    <span className="absolute -top-3 right-3">{format(setHours(new Date(), hour), 'h a')}</span>
+                                </div>
+                            ))}
+                        </div>
+                        {days.map(day => {
+                            const dayEvents = events.filter(e => isSameDay(new Date(e.start), day));
+                            const { sortedEvents, laneCount } = calculateEventLayout(dayEvents);
+                            const isSun = getDay(day) === 0;
+                            return (
+                                <div key={day.toString()} onDragOver={e => e.preventDefault()} onDrop={(e) => handleDrop(e, day)} className={`flex-1 relative border-r border-slate-100 last:border-0 hover:bg-slate-50 ${isSun ? 'bg-red-50/5' : ''}`} style={{ height: `${24 * PIXELS_PER_HOUR}px` }}>
+                                    {hours.map(h => (<div key={h} onClick={(e) => handleSlotClickInternal(e, day, h)} className="border-b border-slate-100 w-full absolute cursor-pointer hover:bg-indigo-50/30" style={{ top: `${h * PIXELS_PER_HOUR}px`, height: `${PIXELS_PER_HOUR}px` }}></div>))}
+                                    {sortedEvents.map(event => {
+                                        const startMin = event.start.getHours() * 60 + event.start.getMinutes();
+                                        const duration = differenceInMinutes(new Date(event.end), new Date(event.start));
+                                        const linkedTask = tasks.find(t => t.id === event.taskId);
+                                        const isDone = linkedTask?.completed;
+                                        const widthPercent = 100 / (laneCount || 1);
+                                        const leftPercent = (event.laneIndex || 0) * widthPercent;
+                                        return (
+                                            <div key={event.id} draggable onDragStart={(e) => { e.dataTransfer.setData('eventId', event.id); }} onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, event); }} className={`absolute rounded-md text-xs border shadow-sm z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all select-none ${isDone ? 'bg-slate-200 border-slate-300 text-slate-400 line-through' : (event.color || 'bg-blue-100 border-blue-200 text-blue-700')}`} style={{ top: `${startMin * (PIXELS_PER_HOUR / 60)}px`, height: `${Math.max(duration * (PIXELS_PER_HOUR / 60), 15)}px`, left: `${leftPercent}%`, width: `${widthPercent}%` }}>
+                                                <div className="px-1 py-0.5 font-semibold truncate leading-tight pointer-events-none">{event.title}</div>
+                                                <div className="px-1 text-[9px] opacity-75 pointer-events-none">{format(new Date(event.start), 'h:mm a')} - {format(new Date(event.end), 'h:mm a')}</div>
+                                                <div className="resize-handle" onMouseDown={(e) => handleResizeStart(e, event)}></div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
 
         function App() {
-            // State Initialization
             const [tasks, setTasks] = useLocalStorage('ai-planner-tasks', []);
             const [events, setEvents] = useLocalStorage('ai-planner-events', []);
             const [selectedCountries, setSelectedCountries] = useLocalStorage('ai-planner-countries', ['US']);
-            const [clocks, setClocks] = useLocalStorage('ai-planner-clocks', [
-                { id: 'local', label: 'Local', zone: Intl.DateTimeFormat().resolvedOptions().timeZone }
-            ]);
-            
-            // Default word counts for autocomplete learning
-            const [wordCounts, setWordCounts] = useLocalStorage('ai-planner-word-freq', {
-                'Meeting': 10, 'Call': 8, 'Report': 6, 'Project': 5, 'Review': 5, 
-                'Lunch': 4, 'Deadline': 4, 'Urgent': 3, 'Client': 3, 'Team': 3
-            });
-
-            // Google Config State
+            const [clocks, setClocks] = useLocalStorage('ai-planner-clocks', [{ id: 'local', label: 'Local', zone: Intl.DateTimeFormat().resolvedOptions().timeZone }]);
+            const [wordCounts, setWordCounts] = useLocalStorage('ai-planner-word-freq', {'Meeting': 10, 'Call': 8});
             const [googleConfig, setGoogleConfig] = useLocalStorage('ai-planner-google-config', { clientId: '', apiKey: '' });
 
-            // UI State
             const [viewMode, setViewMode] = useState('week');
             const [currentDate, setCurrentDate] = useState(new Date());
             const [inputValue, setInputValue] = useState('');
@@ -632,46 +640,30 @@
             const [overdueTask, setOverdueTask] = useState(null);
             const [selectedCategory, setSelectedCategory] = useState('medium');
             const [googleConnected, setGoogleConnected] = useState(false);
-            
-            // Refs
             const tokenClient = useRef(null);
-
-            // --- Logic Helpers ---
 
             const updateWordFreq = (text) => {
                 if (!text) return;
                 const words = text.split(/[\s,.]+/);
                 const updates = { ...wordCounts };
-                words.forEach(w => {
-                    const clean = w.trim();
-                    if (clean.length > 2) {
-                        updates[clean] = (updates[clean] || 0) + 1;
-                    }
-                });
+                words.forEach(w => { const clean = w.trim(); if (clean.length > 2) updates[clean] = (updates[clean] || 0) + 1; });
                 setWordCounts(updates);
             };
 
-            // --- Google Calendar Integration ---
-
             const initGoogleAPI = () => {
-                // Ensure scripts are loaded
                 if (typeof window.google === 'undefined' || typeof window.gapi === 'undefined') return;
-                
-                // Ensure keys are present
                 if (!googleConfig.clientId || !googleConfig.apiKey) return;
 
                 const gapi = window.gapi;
                 const google = window.google;
 
-                // Initialize GAPI Client
                 gapi.load('client', async () => {
                     try {
                         await gapi.client.init({
                             apiKey: googleConfig.apiKey,
                             discoveryDocs: [DISCOVERY_DOC],
                         });
-                        
-                        // Double check calendar API is loaded
+                        // Load calendar specifically if not loaded
                         if (!gapi.client.calendar) {
                             await gapi.client.load('calendar', 'v3');
                         }
@@ -681,14 +673,13 @@
                     }
                 });
 
-                // Initialize Identity Services Client
                 tokenClient.current = google.accounts.oauth2.initTokenClient({
                     client_id: googleConfig.clientId,
                     scope: SCOPES,
                     callback: async (resp) => {
                         if (resp.error) {
                             console.error(resp);
-                            setAiMessage("Google Auth Error: " + resp.error);
+                            setAiMessage("Google Auth Error: " + resp.error.message);
                             return;
                         }
                         // Important: Set the token for gapi to use
@@ -701,58 +692,33 @@
                 });
             };
 
-            // Re-run init when config changes
-            useEffect(() => { 
-                initGoogleAPI(); 
-            }, [googleConfig]);
+            useEffect(() => { initGoogleAPI(); }, [googleConfig]);
 
             const listUpcomingEvents = async () => {
-                if (typeof window.gapi === 'undefined' || !window.gapi.client) {
-                    setAiMessage("Google API not fully loaded yet.");
+                // Guard clause for calendar client
+                if (typeof window.gapi === 'undefined' || !window.gapi.client || !window.gapi.client.calendar) {
+                    setAiMessage("Google Calendar API not fully loaded yet.");
                     return;
                 }
                 
                 try {
-                    const request = {
-                        'calendarId': 'primary',
-                        'timeMin': (new Date()).toISOString(),
-                        'showDeleted': false,
-                        'singleEvents': true,
-                        'maxResults': 50,
-                        'orderBy': 'startTime',
-                    };
-                    
+                    const request = { 'calendarId': 'primary', 'timeMin': (new Date()).toISOString(), 'showDeleted': false, 'singleEvents': true, 'maxResults': 50, 'orderBy': 'startTime' };
                     const response = await window.gapi.client.calendar.events.list(request);
-                    const items = response.result.items;
-                    
-                    if (items && items.length > 0) {
-                        const realEvents = items.map(item => ({
-                            id: item.id,
-                            title: item.summary || 'No Title',
-                            start: new Date(item.start.dateTime || item.start.date),
-                            end: new Date(item.end.dateTime || item.end.date),
-                            color: 'bg-blue-50 border-blue-200 text-blue-700',
-                            type: 'google'
-                        }));
-                        
-                        setEvents(prev => {
-                            // Remove old google events to prevent duplicates/stale data
-                            const nonGoogleEvents = prev.filter(e => e.type !== 'google');
-                            // Merge logic if you want to keep manual google events? 
-                            // For now, we just append new fetch results to non-google events
-                            // But we should check ID to be safe if we want to merge nicely
-                             const existingIds = new Set(prev.map(e => e.id));
-                             const newUniqueEvents = realEvents.filter(e => !existingIds.has(e.id));
-                             return [...prev, ...newUniqueEvents];
-                        });
-                        setAiMessage(`Synced ${realEvents.length} events from Google.`);
-                    } else {
-                        setAiMessage("No upcoming events found.");
-                    }
-                } catch (err) {
-                    setAiMessage("Failed to fetch Google Events.");
-                    console.error(err);
-                }
+                    const realEvents = response.result.items.map(item => ({
+                        id: item.id,
+                        title: item.summary,
+                        start: new Date(item.start.dateTime || item.start.date),
+                        end: new Date(item.end.dateTime || item.end.date),
+                        color: 'bg-blue-50 border-blue-200 text-blue-700',
+                        type: 'google'
+                    }));
+                    setEvents(prev => {
+                        const existingIds = new Set(prev.map(e => e.id));
+                        const newEvents = realEvents.filter(e => !existingIds.has(e.id));
+                        return [...prev, ...newEvents];
+                    });
+                    setAiMessage(`Synced ${realEvents.length} events from Google.`);
+                } catch (err) { setAiMessage("Failed to fetch Google Events."); console.error(err); }
             };
 
             const handleToggleGoogle = () => {
@@ -760,90 +726,51 @@
                     setAiMessage("Please enter API credentials in Settings first.");
                     return;
                 }
-                
                 if (googleConnected) {
                     setGoogleConnected(false);
                     const token = window.gapi.client.getToken();
-                    if (token !== null) {
-                        window.google.accounts.oauth2.revoke(token.access_token, () => {});
-                        window.gapi.client.setToken('');
-                    }
-                    // Remove google events on disconnect
+                    if (token !== null) { window.google.accounts.oauth2.revoke(token.access_token, () => {}); window.gapi.client.setToken(''); }
                     setEvents(prev => prev.filter(e => e.type !== 'google'));
                     setAiMessage("Disconnected Google Calendar.");
                 } else {
                     if (tokenClient.current) {
                         tokenClient.current.requestAccessToken({ prompt: 'consent' });
                     } else {
-                        // Retry initialization if it failed earlier
                         initGoogleAPI();
-                        setTimeout(() => { 
-                            if (tokenClient.current) tokenClient.current.requestAccessToken({ prompt: 'consent' }); 
-                        }, 1000);
-                        setAiMessage("Initializing Google Client...");
+                        setTimeout(() => { if (tokenClient.current) tokenClient.current.requestAccessToken({ prompt: 'consent' }); }, 500);
                     }
                 }
             };
 
-            // --- Background Monitor (Runs every 15 mins) ---
+            // Background Monitor
             useEffect(() => {
                 const checkStatus = () => {
                     const now = new Date();
-                    // Find overdue tasks
                     const missed = events.find(e => {
                         const task = tasks.find(t => t.id === e.taskId);
-                        // If task exists, is NOT complete, and end time is in the past
-                        if (task && !task.completed && isBefore(new Date(e.end), now)) {
-                            return true;
-                        }
-                        return false;
+                        if (!task || task.completed) return false;
+                        return isBefore(new Date(e.end), now);
                     });
-
-                    if (missed) {
-                        const task = tasks.find(t => t.id === missed.taskId);
-                        setOverdueTask({ event: missed, task });
-                    }
+                    if (missed) { const task = tasks.find(t => t.id === missed.taskId); setOverdueTask({ event: missed, task }); }
                 };
                 
                 const syncGoogle = () => {
-                    if (googleConnected) {
-                        listUpcomingEvents();
-                    }
+                    if (googleConnected) { listUpcomingEvents(); }
                 };
 
-                // Run immediately on mount
                 checkStatus();
-
-                // Set interval
-                const interval = setInterval(() => {
-                    checkStatus();
-                    syncGoogle();
-                }, 900000); // 15 minutes
-                
+                const interval = setInterval(() => { checkStatus(); syncGoogle(); }, 900000); 
                 return () => clearInterval(interval);
             }, [events, tasks, googleConnected]);
 
-            // --- Action Handlers ---
-
             const handleOverdueAction = (action) => {
                 if (!overdueTask) return;
-                
-                if (action === 'finish') {
-                    setTasks(prev => prev.map(t => t.id === overdueTask.task.id ? { ...t, completed: true } : t));
-                    setOverdueTask(null);
-                    setAiMessage("Task marked complete! Great job.");
-                } else if (action === 'reschedule') {
-                    // Find next available slot logic
-                    let cursor = new Date(); 
-                    if (cursor.getHours() < 9) cursor.setHours(9, 0, 0, 0); 
-                    else cursor = addHours(cursor, 1); 
-
+                if (action === 'finish') { setTasks(prev => prev.map(t => t.id === overdueTask.task.id ? { ...t, completed: true } : t)); setOverdueTask(null); setAiMessage("Task marked complete! Great job."); }
+                else if (action === 'reschedule') {
+                    let cursor = new Date(); if (cursor.getHours() < 9) cursor.setHours(9, 0, 0, 0); else cursor = addHours(cursor, 1); 
                     for (let i = 0; i < 50; i++) {
                         const slotEnd = addHours(cursor, 1);
-                        const busy = events.some(e => 
-                            (new Date(e.start) < slotEnd && new Date(e.end) > cursor) && e.id !== overdueTask.event.id
-                        );
-                        
+                        const busy = events.some(e => (new Date(e.start) < slotEnd && new Date(e.end) > cursor) && e.id !== overdueTask.event.id);
                         if (!busy && cursor.getHours() >= 9 && cursor.getHours() <= 17) {
                             const updatedEvent = { ...overdueTask.event, start: cursor, end: slotEnd };
                             setEvents(prev => prev.map(e => e.id === overdueTask.event.id ? updatedEvent : e));
@@ -854,7 +781,6 @@
                         cursor = addHours(cursor, 1);
                     }
                     setOverdueTask(null);
-                    setAiMessage("Could not auto-reschedule. Please move manually.");
                 }
             };
 
@@ -862,177 +788,35 @@
                 setGoogleConfig(prev => ({ ...prev, [field]: value }));
             };
 
-            const handleAddClock = (zoneObj) => {
-                setClocks(prev => [...prev, { id: generateId(), label: zoneObj.label.split(' ')[0], zone: zoneObj.zone }]);
-                setIsClockModalOpen(false);
-            };
-
-            const handleToggleCountry = (code) => {
-                setSelectedCountries(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
-            };
-
-            const handleDateNav = (direction) => {
-                setCurrentDate(prev => viewMode === 'week' 
-                    ? (direction === 'next' ? addDays(prev, 7) : subDays(prev, 7)) 
-                    : (direction === 'next' ? addMonths(prev, 1) : subMonths(prev, 1))
-                );
-            };
-
-            const handleAddTask = (e) => {
-                e.preventDefault();
-                if (!inputValue.trim()) return;
-                
-                updateWordFreq(inputValue);
-
-                setTasks(prev => [{
-                    id: generateId(),
-                    title: inputValue,
-                    completed: false,
-                    priority: selectedCategory,
-                    createdAt: new Date(),
-                    duration: 60,
-                    scheduledFor: null
-                }, ...prev]);
-                setInputValue('');
-            };
-
+            const handleToggleCountry = (code) => setSelectedCountries(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+            const handleAddClock = (zoneObj) => { setClocks(prev => [...prev, { id: generateId(), label: zoneObj.label.split(' ')[0], zone: zoneObj.zone }]); setIsClockModalOpen(false); };
+            const handleDateNav = (direction) => setCurrentDate(prev => viewMode === 'week' ? (direction === 'next' ? addDays(prev, 7) : subDays(prev, 7)) : (direction === 'next' ? addMonths(prev, 1) : subMonths(prev, 1)));
+            const handleAddTask = (e) => { e.preventDefault(); if (!inputValue.trim()) return; updateWordFreq(inputValue); setTasks(prev => [{ id: generateId(), title: inputValue, completed: false, priority: selectedCategory, createdAt: new Date(), duration: 60, scheduledFor: null }, ...prev]); setInputValue(''); };
+            
             const handleSaveItem = () => {
                 if (!activeItem) return;
-                
-                updateWordFreq(activeItem.title);
-                updateWordFreq(activeItem.location);
-                updateWordFreq(activeItem.person);
-
-                const taskPayload = {
-                    id: activeItem.taskId || activeItem.id,
-                    title: activeItem.title,
-                    completed: activeItem.completed || false,
-                    priority: activeItem.priority || 'medium',
-                    location: activeItem.location || '',
-                    person: activeItem.person || '',
-                    duration: activeItem.duration || 60,
-                };
-
-                setTasks(prev => {
-                    const exists = prev.some(t => t.id === taskPayload.id);
-                    return exists ? prev.map(t => t.id === taskPayload.id ? { ...t, ...taskPayload } : t) : [...prev, taskPayload];
-                });
-
+                updateWordFreq(activeItem.title); updateWordFreq(activeItem.location); updateWordFreq(activeItem.person);
+                const taskPayload = { id: activeItem.taskId || activeItem.id, title: activeItem.title, completed: activeItem.completed || false, priority: activeItem.priority || 'medium', location: activeItem.location || '', person: activeItem.person || '', duration: activeItem.duration || 60 };
+                setTasks(prev => { const exists = prev.some(t => t.id === taskPayload.id); return exists ? prev.map(t => t.id === taskPayload.id ? { ...t, ...taskPayload } : t) : [...prev, taskPayload]; });
                 if (activeItem.start && activeItem.end) {
-                    const eventPayload = {
-                        id: activeItem.eventId || generateId(),
-                        taskId: taskPayload.id,
-                        title: activeItem.title,
-                        start: activeItem.start,
-                        end: activeItem.end,
-                        color: activeItem.color || 'bg-blue-100 text-blue-800',
-                        location: activeItem.location,
-                        person: activeItem.person
-                    };
-                    setEvents(prev => {
-                        const exists = prev.some(e => e.id === eventPayload.id);
-                        return exists ? prev.map(e => e.id === eventPayload.id ? eventPayload : e) : [...prev, eventPayload];
-                    });
+                    const eventPayload = { id: activeItem.eventId || generateId(), taskId: taskPayload.id, title: activeItem.title, start: activeItem.start, end: activeItem.end, color: activeItem.color || 'bg-blue-100 text-blue-800', location: activeItem.location, person: activeItem.person };
+                    setEvents(prev => { const exists = prev.some(e => e.id === eventPayload.id); return exists ? prev.map(e => e.id === eventPayload.id ? eventPayload : e) : [...prev, eventPayload]; });
                 }
-                
-                setIsEditModalOpen(false);
-                setActiveItem(null);
+                setIsEditModalOpen(false); setActiveItem(null);
             };
-            
-            const handleUpdateEvent = (updatedEvent) => {
-                setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-            };
-
-            const handleDelete = () => {
-                if (!activeItem) return;
-                if (activeItem.taskId) {
-                    setTasks(prev => prev.filter(t => t.id !== activeItem.taskId));
-                    setEvents(prev => prev.filter(e => e.taskId !== activeItem.taskId));
-                } else if (activeItem.id) {
-                     setTasks(prev => prev.filter(t => t.id !== activeItem.id));
-                     setEvents(prev => prev.filter(e => e.id !== activeItem.id));
-                }
-                setIsEditModalOpen(false);
-            };
-
-            const handleDropTask = (taskId, day, hour, minutes = 0) => {
-                const task = tasks.find(t => t.id === taskId);
-                if (!task) return;
-                const startDate = setMinutes(setHours(new Date(day), hour), minutes);
-                const endDate = addDays(startDate, 0); 
-                endDate.setMinutes(startDate.getMinutes() + (task.duration || 60)); 
-
-                const newEvent = {
-                    id: generateId(),
-                    taskId: task.id,
-                    title: task.title,
-                    start: startDate,
-                    end: endDate,
-                    color: task.priority === 'high' ? 'bg-red-100 text-red-800' : 
-                           task.priority === 'personal' ? 'bg-green-100 text-green-800' : 
-                           'bg-indigo-100 text-indigo-800'
-                };
-                setEvents(prev => [...prev, newEvent]);
-                setAiMessage(`Scheduled "${task.title}"!`);
-            };
-
+            const handleUpdateEvent = (updatedEvent) => setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+            const handleDelete = () => { if (!activeItem) return; if (activeItem.taskId) { setTasks(prev => prev.filter(t => t.id !== activeItem.taskId)); setEvents(prev => prev.filter(e => e.taskId !== activeItem.taskId)); } else if (activeItem.id) { setTasks(prev => prev.filter(t => t.id !== activeItem.id)); setEvents(prev => prev.filter(e => e.id !== activeItem.id)); } setIsEditModalOpen(false); };
+            const handleDropTask = (taskId, day, hour, minutes = 0) => { const task = tasks.find(t => t.id === taskId); if (!task) return; const startDate = setMinutes(setHours(new Date(day), hour), minutes); const endDate = addDays(startDate, 0); endDate.setMinutes(startDate.getMinutes() + (task.duration || 60)); const newEvent = { id: generateId(), taskId: task.id, title: task.title, start: startDate, end: endDate, color: task.priority === 'high' ? 'bg-red-100 text-red-800' : task.priority === 'personal' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800' }; setEvents(prev => [...prev, newEvent]); setAiMessage(`Scheduled "${task.title}"!`); };
             const openEditModal = (day, hour, existingItem = null, minutes = 0) => {
                 if (existingItem) {
-                    if (existingItem.taskId) {
-                        const task = tasks.find(t => t.id === existingItem.taskId);
-                        setActiveItem({ ...task, eventId: existingItem.id, start: existingItem.start, end: existingItem.end, isEvent: true });
-                    } else if (existingItem.start) {
-                         setActiveItem({ ...existingItem, isEvent: true });
-                    } else {
-                        setActiveItem({ ...existingItem, isEvent: false });
-                    }
-                } else {
-                    const start = new Date(day); start.setHours(hour || 9, minutes, 0, 0);
-                    const end = new Date(start); end.setMinutes(start.getMinutes() + 60);
-                    setActiveItem({ id: generateId(), title: '', start, end, priority: 'medium', color: 'bg-blue-100 text-blue-800', isEvent: true });
-                }
+                    if (existingItem.taskId) { const task = tasks.find(t => t.id === existingItem.taskId); setActiveItem({ ...task, eventId: existingItem.id, start: existingItem.start, end: existingItem.end, isEvent: true }); } 
+                    else if (existingItem.start) { setActiveItem({ ...existingItem, isEvent: true }); } else { setActiveItem({ ...existingItem, isEvent: false }); }
+                } else { const start = new Date(day); start.setHours(hour || 9, minutes, 0, 0); const end = new Date(start); end.setMinutes(start.getMinutes() + 60); setActiveItem({ id: generateId(), title: '', start, end, priority: 'medium', color: 'bg-blue-100 text-blue-800', isEvent: true }); }
                 setIsEditModalOpen(true);
             };
             
-            const autoOptimize = () => {
-                setAiState('thinking');
-                setTimeout(() => {
-                    const unscheduled = tasks.filter(t => !t.completed && !events.some(e => e.taskId === t.id));
-                    if (!unscheduled.length) { setAiState('idle'); setAiMessage("Nothing to schedule!"); return; }
-                    
-                    const newEvents = [];
-                    let cursor = new Date(); cursor.setHours(9,0,0,0);
-                    if (cursor < new Date()) cursor = addDays(cursor, 1);
-
-                    unscheduled.forEach(task => {
-                        for(let i=0; i<50; i++) {
-                            if (cursor.getHours() >= 17) { cursor = addDays(cursor, 1); cursor.setHours(9,0,0,0); }
-                            if (getDay(cursor) === 0 || getDay(cursor) === 6) { cursor = addDays(cursor, 1); cursor.setHours(9,0,0,0); }
-                            
-                            const slotEnd = addHours(cursor, 1);
-                            const busy = events.concat(newEvents).some(e => new Date(e.start) < slotEnd && new Date(e.end) > cursor);
-                            
-                            if (!busy) {
-                                const ev = { id: generateId(), title: task.title, start: new Date(cursor), end: slotEnd, color: 'bg-purple-100 text-purple-800', taskId: task.id };
-                                newEvents.push(ev);
-                                cursor = addHours(cursor, 1);
-                                break;
-                            }
-                            cursor = addHours(cursor, 1);
-                        }
-                    });
-
-                    setEvents(prev => [...prev, ...newEvents]);
-                    setAiState('idle');
-                    setAiMessage(`Optimized! Scheduled ${newEvents.length} tasks.`);
-                }, 1000);
-            };
-
-            // --- Render ---
             return (
                 <div className="flex flex-col md:flex-row h-full bg-slate-100 overflow-hidden">
-                    
-                    {/* Left Panel: Calendar */}
                     <div className="flex-1 flex flex-col h-full overflow-hidden relative border-r border-slate-200">
                         <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between shadow-sm z-10">
                             <div className="flex items-center gap-4">
@@ -1051,7 +835,6 @@
                                 <button onClick={() => setIsSettingsOpen(true)} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 rounded-lg"><Settings size={20} /></button>
                             </div>
                         </div>
-
                         <div className="flex-1 p-4 overflow-hidden bg-slate-50">
                             {viewMode === 'week' ? (
                                 <WeekView currentDate={currentDate} events={events} tasks={tasks} selectedCountries={selectedCountries} onDropTask={handleDropTask} onSlotClick={openEditModal} onUpdateEvent={handleUpdateEvent} />
@@ -1060,29 +843,16 @@
                             )}
                         </div>
                     </div>
-
-                    {/* Right Panel: Tasks */}
                     <div className="w-full md:w-[380px] bg-white flex flex-col shadow-xl z-20 border-l border-slate-200">
                         <div className="bg-slate-900 pb-4">
                             <div className="p-6 pb-2">
                                 <h1 className="text-xl font-bold text-white flex items-center gap-2"><span className="bg-indigo-500 text-white p-1.5 rounded-lg"><Layout size={18}/></span>Planner Pro</h1>
                             </div>
-                            <WorldClockBar 
-                                clocks={clocks} 
-                                onAddClock={() => setIsClockModalOpen(true)}
-                                onDeleteClock={(id) => setClocks(prev => prev.filter(c => c.id !== id))}
-                            />
+                            <WorldClockBar clocks={clocks} onAddClock={() => setIsClockModalOpen(true)} onDeleteClock={(id) => setClocks(prev => prev.filter(c => c.id !== id))} />
                         </div>
-
                         <div className="p-6 pt-6 border-b border-slate-100">
                             <form onSubmit={handleAddTask} className="relative">
-                                <AutocompleteInput 
-                                    value={inputValue} 
-                                    onChange={(e) => setInputValue(e.target.value)} 
-                                    placeholder="Add new task..." 
-                                    className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all outline-none" 
-                                    wordCounts={wordCounts}
-                                />
+                                <AutocompleteInput value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Add new task..." className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all outline-none" wordCounts={wordCounts} />
                                 <button type="submit" className="absolute right-2 top-2 p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-lg"><Plus size={18}/></button>
                                 <div className="flex gap-2 mt-3">
                                     {['high', 'medium', 'low', 'personal'].map(prio => (
@@ -1091,22 +861,15 @@
                                 </div>
                             </form>
                         </div>
-
                         <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6 custom-scrollbar bg-slate-50/50">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Backlog</h3>
-                                <button onClick={() => setTasks(prev => prev.filter(t => !t.completed))} className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1"><Trash2 size={10} /> Clear Done</button>
-                            </div>
+                            <div className="flex items-center justify-between mb-3"><h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Backlog</h3><button onClick={() => setTasks(prev => prev.filter(t => !t.completed))} className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1"><Trash2 size={10} /> Clear Done</button></div>
                             <AnimatePresence>
                                 {tasks.sort((a,b) => (a.completed === b.completed)? 0 : a.completed? 1 : -1).map(task => (
                                     <motion.div key={task.id} layout draggable={!task.completed} onDragStart={(e) => { e.dataTransfer.setData('taskId', task.id); }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`group flex items-center gap-3 p-3 mb-2 rounded-xl border bg-white hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${task.completed ? 'opacity-50 grayscale' : 'border-slate-200 shadow-sm'}`}>
                                         <button onClick={() => setTasks(prev => prev.map(t => t.id === task.id ? {...t, completed: !t.completed} : t))} className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${task.completed ? 'bg-green-500 border-green-500' : 'border-slate-300 hover:border-indigo-400'}`}>{task.completed && <Check size={12} className="text-white"/>}</button>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium truncate text-slate-700">{task.title}</div>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className={`w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' : task.priority === 'personal' ? 'bg-green-400' : 'bg-blue-400'}`}></span>
-                                                {events.some(e => e.taskId === task.id) && !task.completed && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Clock size={8}/> Scheduled</span>}
-                                            </div>
+                                            <div className="flex items-center gap-2 mt-0.5"><span className={`w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' : task.priority === 'personal' ? 'bg-green-400' : 'bg-blue-400'}`}></span>{events.some(e => e.taskId === task.id) && !task.completed && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Clock size={8}/> Scheduled</span>}</div>
                                         </div>
                                         <button onClick={() => openEditModal(null, null, task)} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-indigo-600"><Edit2 size={14}/></button>
                                         <div className="text-slate-200"><GripVertical size={16}/></div>
@@ -1114,33 +877,19 @@
                                 ))}
                             </AnimatePresence>
                         </div>
-                        
-                        <div className="p-3 bg-white border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
-                            <span>{aiMessage}</span>
-                        </div>
+                        <div className="p-3 bg-white border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center"><span>{aiMessage}</span></div>
                     </div>
-
-                    {/* Modals */}
                     <AnimatePresence>
                         {overdueTask && (
                             <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-red-100 p-4 max-w-sm w-full">
                                 <div className="flex items-start gap-3">
                                     <div className="bg-red-100 p-2 rounded-full text-red-600"><AlertCircle size={20}/></div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-900">Task Overdue</h3>
-                                        <p className="text-sm text-slate-600 mt-1">"{overdueTask.task.title}" was scheduled for {format(new Date(overdueTask.event.end), 'h:mm a')}. Is it done?</p>
-                                        <div className="flex gap-2 mt-3">
-                                            <button onClick={() => handleOverdueAction('finish')} className="flex-1 bg-green-600 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-green-700">Yes, Finished</button>
-                                            <button onClick={() => handleOverdueAction('reschedule')} className="flex-1 bg-slate-100 text-slate-700 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-200">No, Reschedule</button>
-                                        </div>
-                                    </div>
+                                    <div><h3 className="font-bold text-slate-900">Task Overdue</h3><p className="text-sm text-slate-600 mt-1">"{overdueTask.task.title}" was scheduled for {format(new Date(overdueTask.event.end), 'h:mm a')}. Is it done?</p><div className="flex gap-2 mt-3"><button onClick={() => handleOverdueAction('finish')} className="flex-1 bg-green-600 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-green-700">Yes, Finished</button><button onClick={() => handleOverdueAction('reschedule')} className="flex-1 bg-slate-100 text-slate-700 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-200">No, Reschedule</button></div></div>
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
-
                     <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} selectedCountries={selectedCountries} onToggleCountry={handleToggleCountry} googleConnected={googleConnected} onToggleGoogle={handleToggleGoogle} googleConfig={googleConfig} onUpdateGoogleConfig={handleUpdateGoogleConfig} />
-                    
                     <Modal isOpen={isClockModalOpen} onClose={() => setIsClockModalOpen(false)} title="Add World Clock">
                         <div className="grid grid-cols-1 gap-2">
                             {TIMEZONES.map((tz, i) => (
@@ -1148,7 +897,6 @@
                             ))}
                         </div>
                     </Modal>
-
                     <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={activeItem?.id ? "Edit Details" : "New Event"}>
                         {activeItem && (
                             <div className="space-y-4">
