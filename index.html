@@ -229,7 +229,6 @@
             const [suggestions, setSuggestions] = useState([]);
             const tags = value ? value.split(',').filter(t => t.trim()) : [];
 
-            // Debounced fetch for names/words
             const getSuggestions = useCallback(debounce(async (query) => {
                 if (!query) return;
                 
@@ -410,7 +409,7 @@
             );
         };
 
-        // --- UI Components ---
+        // --- Components ---
 
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
@@ -601,202 +600,10 @@
                 </div>
             );
         };
-
-const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, onSlotClick, onUpdateEvent }) => {
-            const days = eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) });
-            const hours = Array.from({ length: 24 }, (_, i) => i);
-            const PIXELS_PER_HOUR = 60;
-            const SNAP_MINUTES = 15;
-            
-            // --- Algorithm to calculate overlap layout ---
-            const calculateEventLayout = (dayEvents) => {
-                // 1. Sort events by start time, then duration
-                const sortedEvents = [...dayEvents].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
-                const lanes = [];
-
-                // 2. Place events into lanes (columns)
-                sortedEvents.forEach(event => {
-                    let placed = false;
-                    for (let i = 0; i < lanes.length; i++) {
-                        const lane = lanes[i];
-                        // If this lane is empty or the last event in this lane finishes before the current event starts
-                        const lastEventInLane = lane[lane.length - 1];
-                        if (!lastEventInLane || lastEventInLane.end <= event.start) {
-                            lane.push(event);
-                            event.laneIndex = i;
-                            placed = true;
-                            break;
-                        }
-                    }
-                    if (!placed) {
-                        lanes.push([event]);
-                        event.laneIndex = lanes.length - 1;
-                    }
-                });
-
-                return { sortedEvents, laneCount: lanes.length };
-            };
-
-            const handleDrop = (e, day) => {
-                e.preventDefault();
-                const rect = e.currentTarget.getBoundingClientRect();
-                const offsetY = e.clientY - rect.top + e.currentTarget.scrollTop;
-                const rawMinutes = offsetY * (60 / PIXELS_PER_HOUR); 
-                const snappedMinutes = Math.floor(rawMinutes / SNAP_MINUTES) * SNAP_MINUTES;
-                const hour = Math.floor(snappedMinutes / 60);
-                const minutes = snappedMinutes % 60;
-
-                const taskId = e.dataTransfer.getData('taskId');
-                const eventId = e.dataTransfer.getData('eventId');
-
-                if (taskId) {
-                    onDropTask(taskId, day, hour, minutes);
-                } else if (eventId) {
-                    const event = events.find(e => e.id === eventId);
-                    if (event) {
-                        const duration = differenceInMinutes(new Date(event.end), new Date(event.start));
-                        const newStart = setMinutes(setHours(new Date(day), hour), minutes);
-                        const newEnd = addDays(newStart, 0);
-                        newEnd.setMinutes(newStart.getMinutes() + duration);
-                        onUpdateEvent({ ...event, start: newStart, end: newEnd });
-                    }
-                }
-            };
-
-            const handleResizeStart = (e, event) => {
-                e.stopPropagation(); 
-                e.preventDefault();
-                const startY = e.clientY;
-                const originalEnd = new Date(event.end);
-                
-                const handleMouseMove = (moveEvent) => {
-                    const deltaY = moveEvent.clientY - startY;
-                    const deltaMinutes = (deltaY / PIXELS_PER_HOUR) * 60;
-                    const snappedDelta = Math.round(deltaMinutes / SNAP_MINUTES) * SNAP_MINUTES;
-                    if (snappedDelta !== 0) {
-                        const newEnd = new Date(originalEnd);
-                        newEnd.setMinutes(originalEnd.getMinutes() + snappedDelta);
-                        // Minimum 15 mins
-                        if (differenceInMinutes(newEnd, new Date(event.start)) >= 15) {
-                            onUpdateEvent({ ...event, end: newEnd });
-                        }
-                    }
-                };
-                
-                const handleMouseUp = () => {
-                    window.removeEventListener('mousemove', handleMouseMove);
-                    window.removeEventListener('mouseup', handleMouseUp);
-                };
-                
-                window.addEventListener('mousemove', handleMouseMove);
-                window.addEventListener('mouseup', handleMouseUp);
-            };
-
-            const handleSlotClickInternal = (e, day, hour) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const offsetY = e.clientY - rect.top; 
-                const minutes = offsetY > (PIXELS_PER_HOUR / 2) ? 30 : 0;
-                onSlotClick(day, hour, null, minutes);
-            };
-
-            return (
-                <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="flex border-b border-slate-200 ml-16">
-                        {days.map(day => {
-                            const isSun = getDay(day) === 0;
-                            const holidays = getHolidaysForDate(day, selectedCountries);
-                            return (
-                                <div key={day.toString()} className={`flex-1 py-3 text-center border-r border-slate-100 last:border-0 ${isSun ? 'bg-red-50/20' : ''}`}>
-                                    <div className={`text-xs font-bold uppercase ${isSun ? 'text-red-500' : 'text-slate-500'}`}>{format(day, 'EEE')}</div>
-                                    <div className={`text-sm font-bold mt-1 inline-block w-8 h-8 leading-8 rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-md' : isSun ? 'text-red-600' : 'text-slate-700'}`}>{format(day, 'd')}</div>
-                                    {holidays.length > 0 && (
-                                        <div className="flex flex-col gap-0.5 mt-1 px-1">
-                                            {holidays.map((h, i) => (
-                                                <div key={i} className="text-[9px] font-medium truncate text-slate-500 bg-slate-100/50 rounded px-1">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto custom-scrollbar relative flex">
-                        <div className="w-16 flex-shrink-0 bg-slate-50 border-r border-slate-200 text-xs text-slate-400 font-medium">
-                            {hours.map(hour => (
-                                <div key={hour} className="relative border-b border-transparent" style={{ height: `${PIXELS_PER_HOUR}px` }}>
-                                    <span className="absolute -top-3 right-3">{format(setHours(new Date(), hour), 'h a')}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {days.map(day => {
-                            const dayEvents = events.filter(e => isSameDay(new Date(e.start), day));
-                            // Apply layout algorithm
-                            const { sortedEvents, laneCount } = calculateEventLayout(dayEvents);
-                            const isSun = getDay(day) === 0;
-                            
-                            return (
-                                <div 
-                                    key={day.toString()}
-                                    onDragOver={e => e.preventDefault()}
-                                    onDrop={(e) => handleDrop(e, day)}
-                                    className={`flex-1 relative border-r border-slate-100 last:border-0 hover:bg-slate-50 ${isSun ? 'bg-red-50/5' : ''}`}
-                                    style={{ height: `${24 * PIXELS_PER_HOUR}px` }}
-                                >
-                                    {hours.map(h => (
-                                        <div 
-                                            key={h} 
-                                            onClick={(e) => handleSlotClickInternal(e, day, h)}
-                                            className="border-b border-slate-100 w-full absolute cursor-pointer hover:bg-indigo-50/30" 
-                                            style={{ top: `${h * PIXELS_PER_HOUR}px`, height: `${PIXELS_PER_HOUR}px` }}
-                                        ></div>
-                                    ))}
-
-                                    {sortedEvents.map(event => {
-                                        const startMin = event.start.getHours() * 60 + event.start.getMinutes();
-                                        const duration = differenceInMinutes(new Date(event.end), new Date(event.start));
-                                        const linkedTask = tasks.find(t => t.id === event.taskId);
-                                        const isDone = linkedTask?.completed;
-                                        
-                                        // Calculate side-by-side positioning
-                                        const widthPercent = 100 / (laneCount || 1);
-                                        const leftPercent = (event.laneIndex || 0) * widthPercent;
-
-                                        return (
-                                            <div
-                                                key={event.id}
-                                                draggable
-                                                onDragStart={(e) => { e.dataTransfer.setData('eventId', event.id); }}
-                                                onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, event); }}
-                                                className={`absolute rounded-md text-xs border shadow-sm z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all select-none
-                                                    ${isDone ? 'bg-slate-200 border-slate-300 text-slate-400 line-through' : (event.color || 'bg-blue-100 border-blue-200 text-blue-700')}
-                                                `}
-                                                style={{
-                                                    top: `${startMin * (PIXELS_PER_HOUR / 60)}px`,
-                                                    height: `${Math.max(duration * (PIXELS_PER_HOUR / 60), 15)}px`,
-                                                    left: `${leftPercent}%`,
-                                                    width: `${widthPercent}%`
-                                                }}
-                                            >
-                                                <div className="px-1 py-0.5 font-semibold truncate leading-tight pointer-events-none">{event.title}</div>
-                                                <div className="px-1 text-[9px] opacity-75 pointer-events-none">{format(new Date(event.start), 'h:mm a')} - {format(new Date(event.end), 'h:mm a')}</div>
-                                                <div className="resize-handle" onMouseDown={(e) => handleResizeStart(e, event)}></div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        };
-
-        // --- Main App ---
+// --- Main App ---
 
         function App() {
-            // State
+            // State Initialization
             const [tasks, setTasks] = useLocalStorage('ai-planner-tasks', []);
             const [events, setEvents] = useLocalStorage('ai-planner-events', []);
             const [selectedCountries, setSelectedCountries] = useLocalStorage('ai-planner-countries', ['US']);
@@ -804,11 +611,16 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                 { id: 'local', label: 'Local', zone: Intl.DateTimeFormat().resolvedOptions().timeZone }
             ]);
             
+            // Default word counts for autocomplete learning
             const [wordCounts, setWordCounts] = useLocalStorage('ai-planner-word-freq', {
                 'Meeting': 10, 'Call': 8, 'Report': 6, 'Project': 5, 'Review': 5, 
                 'Lunch': 4, 'Deadline': 4, 'Urgent': 3, 'Client': 3, 'Team': 3
             });
 
+            // Google Config State
+            const [googleConfig, setGoogleConfig] = useLocalStorage('ai-planner-google-config', { clientId: '', apiKey: '' });
+
+            // UI State
             const [viewMode, setViewMode] = useState('week');
             const [currentDate, setCurrentDate] = useState(new Date());
             const [inputValue, setInputValue] = useState('');
@@ -820,53 +632,68 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
             const [overdueTask, setOverdueTask] = useState(null);
             const [selectedCategory, setSelectedCategory] = useState('medium');
             const [googleConnected, setGoogleConnected] = useState(false);
-            const [googleConfig, setGoogleConfig] = useLocalStorage('ai-planner-google-config', { clientId: '', apiKey: '' });
+            
+            // Refs
             const tokenClient = useRef(null);
 
-            // -- Word Frequency Logic --
+            // --- Logic Helpers ---
+
             const updateWordFreq = (text) => {
                 if (!text) return;
                 const words = text.split(/[\s,.]+/);
                 const updates = { ...wordCounts };
                 words.forEach(w => {
                     const clean = w.trim();
-                    if (clean.length > 2) updates[clean] = (updates[clean] || 0) + 1;
+                    if (clean.length > 2) {
+                        updates[clean] = (updates[clean] || 0) + 1;
+                    }
                 });
                 setWordCounts(updates);
             };
 
-            // -- Google Calendar Logic --
+            // --- Google Calendar Integration ---
+
             const initGoogleAPI = () => {
+                // Ensure scripts are loaded
                 if (typeof window.google === 'undefined' || typeof window.gapi === 'undefined') return;
+                
+                // Ensure keys are present
                 if (!googleConfig.clientId || !googleConfig.apiKey) return;
 
                 const gapi = window.gapi;
                 const google = window.google;
 
+                // Initialize GAPI Client
                 gapi.load('client', async () => {
                     try {
                         await gapi.client.init({
                             apiKey: googleConfig.apiKey,
                             discoveryDocs: [DISCOVERY_DOC],
                         });
-                        // Load calendar specifically if not loaded
+                        
+                        // Double check calendar API is loaded
                         if (!gapi.client.calendar) {
                             await gapi.client.load('calendar', 'v3');
                         }
                     } catch (e) {
                         console.error("GAPI Init Error", e);
-                        setAiMessage("Error initializing Google API. Check keys.");
+                        setAiMessage(`Error initializing Google API: ${e.result?.error?.message || 'Check Keys'}`);
                     }
                 });
 
+                // Initialize Identity Services Client
                 tokenClient.current = google.accounts.oauth2.initTokenClient({
                     client_id: googleConfig.clientId,
                     scope: SCOPES,
                     callback: async (resp) => {
                         if (resp.error) {
                             console.error(resp);
-                            setAiMessage("Google Auth Error: " + resp.error.message);
+                            setAiMessage("Google Auth Error: " + resp.error);
                             return;
+                        }
+                        // Important: Set the token for gapi to use
+                        if (window.gapi) {
+                            window.gapi.client.setToken(resp);
                         }
                         setGoogleConnected(true);
                         await listUpcomingEvents();
@@ -874,7 +701,10 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                 });
             };
 
-            useEffect(() => { initGoogleAPI(); }, [googleConfig]);
+            // Re-run init when config changes
+            useEffect(() => { 
+                initGoogleAPI(); 
+            }, [googleConfig]);
 
             const listUpcomingEvents = async () => {
                 if (typeof window.gapi === 'undefined' || !window.gapi.client) {
@@ -891,22 +721,34 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                         'maxResults': 50,
                         'orderBy': 'startTime',
                     };
-                    const response = await window.gapi.client.calendar.events.list(request);
-                    const realEvents = response.result.items.map(item => ({
-                        id: item.id,
-                        title: item.summary,
-                        start: new Date(item.start.dateTime || item.start.date),
-                        end: new Date(item.end.dateTime || item.end.date),
-                        color: 'bg-blue-50 border-blue-200 text-blue-700',
-                        type: 'google'
-                    }));
                     
-                    setEvents(prev => {
-                        const existingIds = new Set(prev.map(e => e.id));
-                        const newEvents = realEvents.filter(e => !existingIds.has(e.id));
-                        return [...prev, ...newEvents];
-                    });
-                    setAiMessage(`Synced ${realEvents.length} events from Google.`);
+                    const response = await window.gapi.client.calendar.events.list(request);
+                    const items = response.result.items;
+                    
+                    if (items && items.length > 0) {
+                        const realEvents = items.map(item => ({
+                            id: item.id,
+                            title: item.summary || 'No Title',
+                            start: new Date(item.start.dateTime || item.start.date),
+                            end: new Date(item.end.dateTime || item.end.date),
+                            color: 'bg-blue-50 border-blue-200 text-blue-700',
+                            type: 'google'
+                        }));
+                        
+                        setEvents(prev => {
+                            // Remove old google events to prevent duplicates/stale data
+                            const nonGoogleEvents = prev.filter(e => e.type !== 'google');
+                            // Merge logic if you want to keep manual google events? 
+                            // For now, we just append new fetch results to non-google events
+                            // But we should check ID to be safe if we want to merge nicely
+                             const existingIds = new Set(prev.map(e => e.id));
+                             const newUniqueEvents = realEvents.filter(e => !existingIds.has(e.id));
+                             return [...prev, ...newUniqueEvents];
+                        });
+                        setAiMessage(`Synced ${realEvents.length} events from Google.`);
+                    } else {
+                        setAiMessage("No upcoming events found.");
+                    }
                 } catch (err) {
                     setAiMessage("Failed to fetch Google Events.");
                     console.error(err);
@@ -918,6 +760,7 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                     setAiMessage("Please enter API credentials in Settings first.");
                     return;
                 }
+                
                 if (googleConnected) {
                     setGoogleConnected(false);
                     const token = window.gapi.client.getToken();
@@ -925,14 +768,15 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                         window.google.accounts.oauth2.revoke(token.access_token, () => {});
                         window.gapi.client.setToken('');
                     }
+                    // Remove google events on disconnect
                     setEvents(prev => prev.filter(e => e.type !== 'google'));
                     setAiMessage("Disconnected Google Calendar.");
                 } else {
                     if (tokenClient.current) {
                         tokenClient.current.requestAccessToken({ prompt: 'consent' });
                     } else {
+                        // Retry initialization if it failed earlier
                         initGoogleAPI();
-                        // Retry shortly if not ready
                         setTimeout(() => { 
                             if (tokenClient.current) tokenClient.current.requestAccessToken({ prompt: 'consent' }); 
                         }, 1000);
@@ -941,14 +785,18 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                 }
             };
 
-            // -- Background Monitor (Runs every 15 mins) --
+            // --- Background Monitor (Runs every 15 mins) ---
             useEffect(() => {
                 const checkStatus = () => {
                     const now = new Date();
+                    // Find overdue tasks
                     const missed = events.find(e => {
                         const task = tasks.find(t => t.id === e.taskId);
-                        if (!task || task.completed) return false;
-                        return isBefore(new Date(e.end), now);
+                        // If task exists, is NOT complete, and end time is in the past
+                        if (task && !task.completed && isBefore(new Date(e.end), now)) {
+                            return true;
+                        }
+                        return false;
                     });
 
                     if (missed) {
@@ -963,16 +811,19 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                     }
                 };
 
+                // Run immediately on mount
                 checkStatus();
-                // 15 Minutes = 900,000 ms
+
+                // Set interval
                 const interval = setInterval(() => {
                     checkStatus();
                     syncGoogle();
-                }, 900000); 
+                }, 900000); // 15 minutes
+                
                 return () => clearInterval(interval);
             }, [events, tasks, googleConnected]);
 
-            // -- Handlers --
+            // --- Action Handlers ---
 
             const handleOverdueAction = (action) => {
                 if (!overdueTask) return;
@@ -982,6 +833,7 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                     setOverdueTask(null);
                     setAiMessage("Task marked complete! Great job.");
                 } else if (action === 'reschedule') {
+                    // Find next available slot logic
                     let cursor = new Date(); 
                     if (cursor.getHours() < 9) cursor.setHours(9, 0, 0, 0); 
                     else cursor = addHours(cursor, 1); 
@@ -1002,6 +854,7 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                         cursor = addHours(cursor, 1);
                     }
                     setOverdueTask(null);
+                    setAiMessage("Could not auto-reschedule. Please move manually.");
                 }
             };
 
@@ -1175,10 +1028,11 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                 }, 1000);
             };
 
+            // --- Render ---
             return (
                 <div className="flex flex-col md:flex-row h-full bg-slate-100 overflow-hidden">
                     
-                    {/* --- Left Panel: Calendar --- */}
+                    {/* Left Panel: Calendar */}
                     <div className="flex-1 flex flex-col h-full overflow-hidden relative border-r border-slate-200">
                         <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between shadow-sm z-10">
                             <div className="flex items-center gap-4">
@@ -1207,9 +1061,8 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                         </div>
                     </div>
 
-                    {/* --- Right Panel: Tasks --- */}
+                    {/* Right Panel: Tasks */}
                     <div className="w-full md:w-[380px] bg-white flex flex-col shadow-xl z-20 border-l border-slate-200">
-                        {/* Header & Clocks */}
                         <div className="bg-slate-900 pb-4">
                             <div className="p-6 pb-2">
                                 <h1 className="text-xl font-bold text-white flex items-center gap-2"><span className="bg-indigo-500 text-white p-1.5 rounded-lg"><Layout size={18}/></span>Planner Pro</h1>
@@ -1221,7 +1074,6 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                             />
                         </div>
 
-                        {/* Input */}
                         <div className="p-6 pt-6 border-b border-slate-100">
                             <form onSubmit={handleAddTask} className="relative">
                                 <AutocompleteInput 
@@ -1263,28 +1115,20 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                             </AnimatePresence>
                         </div>
                         
-                        {/* Status Bar */}
                         <div className="p-3 bg-white border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
                             <span>{aiMessage}</span>
                         </div>
                     </div>
 
-                    {/* --- Modals & Overlays --- */}
-                    
-                    {/* Overdue Notification Alert */}
+                    {/* Modals */}
                     <AnimatePresence>
                         {overdueTask && (
-                            <motion.div 
-                                initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                                className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-red-100 p-4 max-w-sm w-full"
-                            >
+                            <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-red-100 p-4 max-w-sm w-full">
                                 <div className="flex items-start gap-3">
                                     <div className="bg-red-100 p-2 rounded-full text-red-600"><AlertCircle size={20}/></div>
                                     <div>
                                         <h3 className="font-bold text-slate-900">Task Overdue</h3>
-                                        <p className="text-sm text-slate-600 mt-1">
-                                            "{overdueTask.task.title}" was scheduled for {format(new Date(overdueTask.event.end), 'h:mm a')}. Is it done?
-                                        </p>
+                                        <p className="text-sm text-slate-600 mt-1">"{overdueTask.task.title}" was scheduled for {format(new Date(overdueTask.event.end), 'h:mm a')}. Is it done?</p>
                                         <div className="flex gap-2 mt-3">
                                             <button onClick={() => handleOverdueAction('finish')} className="flex-1 bg-green-600 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-green-700">Yes, Finished</button>
                                             <button onClick={() => handleOverdueAction('reschedule')} className="flex-1 bg-slate-100 text-slate-700 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-200">No, Reschedule</button>
@@ -1295,109 +1139,38 @@ const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, o
                         )}
                     </AnimatePresence>
 
-                    <SettingsModal 
-                        isOpen={isSettingsOpen} 
-                        onClose={() => setIsSettingsOpen(false)} 
-                        selectedCountries={selectedCountries} 
-                        onToggleCountry={handleToggleCountry}
-                        googleConnected={googleConnected}
-                        onToggleGoogle={handleToggleGoogle}
-                        googleConfig={googleConfig}
-                        onUpdateGoogleConfig={handleUpdateGoogleConfig}
-                    />
+                    <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} selectedCountries={selectedCountries} onToggleCountry={handleToggleCountry} googleConnected={googleConnected} onToggleGoogle={handleToggleGoogle} googleConfig={googleConfig} onUpdateGoogleConfig={handleUpdateGoogleConfig} />
                     
-                    {/* Add Clock Modal */}
                     <Modal isOpen={isClockModalOpen} onClose={() => setIsClockModalOpen(false)} title="Add World Clock">
                         <div className="grid grid-cols-1 gap-2">
                             {TIMEZONES.map((tz, i) => (
-                                <button 
-                                    key={i} 
-                                    onClick={() => handleAddClock(tz)}
-                                    className="p-3 text-left hover:bg-slate-50 rounded-lg text-sm font-medium text-slate-700 border border-transparent hover:border-slate-200"
-                                >
-                                    {tz.label}
-                                </button>
+                                <button key={i} onClick={() => handleAddClock(tz)} className="p-3 text-left hover:bg-slate-50 rounded-lg text-sm font-medium text-slate-700 border border-transparent hover:border-slate-200">{tz.label}</button>
                             ))}
                         </div>
                     </Modal>
 
-                    {/* Unified Edit Modal */}
                     <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={activeItem?.id ? "Edit Details" : "New Event"}>
                         {activeItem && (
                             <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Title</label>
-                                    <AutocompleteInput 
-                                        value={activeItem.title} 
-                                        onChange={(e) => setActiveItem({...activeItem, title: e.target.value})} 
-                                        className="w-full mt-1 px-3 py-2 border rounded-lg outline-none focus:border-indigo-500 font-medium" 
-                                        autoFocus
-                                        wordCounts={wordCounts}
-                                    />
-                                </div>
-                                
+                                <div><label className="text-xs font-bold text-slate-500 uppercase">Title</label><AutocompleteInput value={activeItem.title} onChange={(e) => setActiveItem({...activeItem, title: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-lg outline-none focus:border-indigo-500 font-medium" autoFocus wordCounts={wordCounts} /></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><MapPin size={10}/> Location</label>
-                                        <AutocompleteInput 
-                                            value={activeItem.location || ''} 
-                                            onChange={(e) => setActiveItem({...activeItem, location: e.target.value})} 
-                                            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" 
-                                            placeholder="Add link or address"
-                                            wordCounts={wordCounts}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><User size={10}/> People</label>
-                                        <TagInput 
-                                            value={activeItem.person || ''} 
-                                            onChange={(e) => setActiveItem({...activeItem, person: e.target.value})} 
-                                            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" 
-                                            placeholder="Add people (comma separated)"
-                                            wordCounts={wordCounts}
-                                        />
-                                    </div>
+                                    <div><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><MapPin size={10}/> Location</label><AutocompleteInput value={activeItem.location || ''} onChange={(e) => setActiveItem({...activeItem, location: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Add link or address" wordCounts={wordCounts} /></div>
+                                    <div><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><User size={10}/> People</label><TagInput value={activeItem.person || ''} onChange={(e) => setActiveItem({...activeItem, person: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Add people (comma separated)" wordCounts={wordCounts} /></div>
                                 </div>
-
                                 {activeItem.isEvent && (
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                         <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mb-2"><Clock size={10}/> Schedule</label>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <span className="text-[10px] text-slate-400 uppercase font-semibold">Start</span>
-                                                <input type="time" value={activeItem.start ? format(new Date(activeItem.start), 'HH:mm') : ''} onChange={e => { const [h, m] = e.target.value.split(':'); const d = new Date(activeItem.start); d.setHours(h,m); setActiveItem({...activeItem, start: d}); }} className="w-full mt-1 px-2 py-1.5 border rounded-md text-sm bg-white" />
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] text-slate-400 uppercase font-semibold">End</span>
-                                                <input type="time" value={activeItem.end ? format(new Date(activeItem.end), 'HH:mm') : ''} onChange={e => { const [h, m] = e.target.value.split(':'); const d = new Date(activeItem.end); d.setHours(h,m); setActiveItem({...activeItem, end: d}); }} className="w-full mt-1 px-2 py-1.5 border rounded-md text-sm bg-white" />
-                                            </div>
+                                            <div><span className="text-[10px] text-slate-400 uppercase font-semibold">Start</span><input type="time" value={activeItem.start ? format(new Date(activeItem.start), 'HH:mm') : ''} onChange={e => { const [h, m] = e.target.value.split(':'); const d = new Date(activeItem.start); d.setHours(h,m); setActiveItem({...activeItem, start: d}); }} className="w-full mt-1 px-2 py-1.5 border rounded-md text-sm bg-white" /></div>
+                                            <div><span className="text-[10px] text-slate-400 uppercase font-semibold">End</span><input type="time" value={activeItem.end ? format(new Date(activeItem.end), 'HH:mm') : ''} onChange={e => { const [h, m] = e.target.value.split(':'); const d = new Date(activeItem.end); d.setHours(h,m); setActiveItem({...activeItem, end: d}); }} className="w-full mt-1 px-2 py-1.5 border rounded-md text-sm bg-white" /></div>
                                         </div>
                                     </div>
                                 )}
-
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Flag size={10}/> Priority / Color</label>
-                                    <div className="flex gap-2 mt-2">
-                                        {['high', 'medium', 'low', 'personal'].map(p => (
-                                            <button 
-                                                key={p} 
-                                                onClick={() => setActiveItem({...activeItem, priority: p, color: p === 'high' ? 'bg-red-100 text-red-800' : p === 'personal' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' })} 
-                                                className={`px-3 py-1.5 rounded-full text-xs font-bold border capitalize transition-all ${activeItem.priority === p ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
-                                            >
-                                                {p}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3 pt-4 border-t border-slate-100">
-                                    <button onClick={handleSaveItem} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 transition-colors">Save Details</button>
-                                    <button onClick={handleDelete} className="px-4 border border-red-100 text-red-500 rounded-xl hover:bg-red-50 transition-colors"><Trash2 size={18}/></button>
-                                </div>
+                                <div><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Flag size={10}/> Priority / Color</label><div className="flex gap-2 mt-2">{['high', 'medium', 'low', 'personal'].map(p => (<button key={p} onClick={() => setActiveItem({...activeItem, priority: p, color: p === 'high' ? 'bg-red-100 text-red-800' : p === 'personal' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' })} className={`px-3 py-1.5 rounded-full text-xs font-bold border capitalize transition-all ${activeItem.priority === p ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>{p}</button>))}</div></div>
+                                <div className="flex gap-3 pt-4 border-t border-slate-100"><button onClick={handleSaveItem} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 transition-colors">Save Details</button><button onClick={handleDelete} className="px-4 border border-red-100 text-red-500 rounded-xl hover:bg-red-50 transition-colors"><Trash2 size={18}/></button></div>
                             </div>
                         )}
                     </Modal>
-
                 </div>
             );
         }
