@@ -74,7 +74,8 @@
             Check, Plus, Calendar as CalendarIcon, Clock, MoreHorizontal, Settings, 
             Zap, MessageSquare, ArrowRight, ChevronLeft, ChevronRight, Layout, 
             X, Moon, Trash2, Edit2, GripVertical, RefreshCw, Star, AlertCircle, 
-            Globe, MapPin, User, Flag, Link as LinkIcon, Watch, Key, Mail, Sun
+            Globe, MapPin, User, Flag, Link as LinkIcon, Watch, Key, Mail, Sun,
+            HelpCircle, ExternalLink
         } from 'lucide-react';
         import { motion, AnimatePresence } from 'framer-motion';
         import { 
@@ -289,104 +290,244 @@
             );
         };
 
+        // End of Part 1. Type "go" for Part 2 (Modals, Views, App).
         // --- Modals ---
 
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }} 
+                        animate={{ opacity: 1, scale: 1 }} 
+                        className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]"
+                    >
                         <div className="flex justify-between items-center p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-800">{title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"><X size={20} /></button>
                         </div>
-                        <div className="p-4 overflow-y-auto custom-scrollbar">{children}</div>
+                        <div className="p-4 overflow-y-auto custom-scrollbar relative">{children}</div>
                     </motion.div>
                 </div>
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, selectedCountries, onToggleCountry, googleConnected, onToggleGoogle, googleConfig, onUpdateGoogleConfig, microsoftConnected, onToggleMicrosoft, microsoftConfig, onUpdateMicrosoftConfig }) => {
+        const SettingsModal = ({ 
+            isOpen, onClose, 
+            selectedCountries, onToggleCountry, 
+            googleConnected, onToggleGoogle, googleConfig, onUpdateGoogleConfig,
+            microsoftConnected, onToggleMicrosoft, microsoftConfig, onUpdateMicrosoftConfig
+        }) => {
+            const [helpTopic, setHelpTopic] = useState(null); // 'google' | 'microsoft' | null
+
+            const renderHelp = () => {
+                if (!helpTopic) return null;
+                const isGoogle = helpTopic === 'google';
+                return (
+                    <div className="absolute inset-0 bg-white z-10 p-4 overflow-y-auto">
+                        <button onClick={() => setHelpTopic(null)} className="mb-4 flex items-center gap-2 text-sm text-indigo-600 font-medium"><ChevronLeft size={16}/> Back to Settings</button>
+                        <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                            {isGoogle ? 'Google Setup Guide' : 'Microsoft Setup Guide'}
+                            <ExternalLink size={14} className="text-slate-400"/>
+                        </h4>
+                        <ol className="list-decimal pl-4 text-xs text-slate-600 space-y-2">
+                            {isGoogle ? (
+                                <>
+                                    <li>Go to <a href="https://console.cloud.google.com" target="_blank" className="text-blue-500 underline">Google Cloud Console</a>.</li>
+                                    <li>Create a project and enable <strong>Google Calendar API</strong>.</li>
+                                    <li>Go to <strong>Credentials</strong> &gt; <strong>Create Credentials</strong>.</li>
+                                    <li><strong>API Key</strong>: Create one. Under "Website restrictions", add your site URL (e.g., <code>https://mudlbum.github.io/*</code>).</li>
+                                    <li><strong>OAuth Client ID</strong>: Select "Web Application".
+                                        <ul className="list-disc pl-4 mt-1 text-slate-500">
+                                            <li>Authorized Origins: <code>https://mudlbum.github.io</code> (No slash at end)</li>
+                                            <li>Authorized Redirects: <code>https://mudlbum.github.io</code></li>
+                                        </ul>
+                                    </li>
+                                    <li>Copy the Client ID and API Key below.</li>
+                                    <li><strong>Important</strong>: Add your email to the "Test Users" list in the OAuth Consent Screen.</li>
+                                </>
+                            ) : (
+                                <>
+                                    <li>Go to <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" className="text-blue-500 underline">Azure App Registrations</a>.</li>
+                                    <li>Click <strong>New Registration</strong>.</li>
+                                    <li>Select "Accounts in any organizational directory and personal Microsoft accounts".</li>
+                                    <li>Under Redirect URI, select <strong>SPA</strong> and enter your URL (e.g., <code>https://mudlbum.github.io</code>).</li>
+                                    <li>Click Register. Copy the <strong>Application (client) ID</strong>.</li>
+                                </>
+                            )}
+                        </ol>
+                    </div>
+                );
+            };
+
             return (
                 <Modal isOpen={isOpen} onClose={onClose} title="Settings">
-                    <div className="space-y-6">
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Key size={16} /> API Credentials</h4>
-                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-4">
-                                <div className="space-y-2">
-                                    <h5 className="text-xs font-bold text-blue-600">Google Calendar</h5>
-                                    <input type="text" value={googleConfig.clientId} onChange={(e) => onUpdateGoogleConfig('clientId', e.target.value)} placeholder="Google Client ID" className="w-full text-xs p-2 border rounded-lg" />
-                                    <input type="password" value={googleConfig.apiKey} onChange={(e) => onUpdateGoogleConfig('apiKey', e.target.value)} placeholder="Google API Key" className="w-full text-xs p-2 border rounded-lg" />
+                    <div className="space-y-6 relative min-h-[300px]">
+                        {helpTopic ? renderHelp() : (
+                            <>
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Key size={16} /> API Credentials</h4>
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-4">
+                                        {/* Google Inputs */}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <h5 className="text-xs font-bold text-blue-600">Google Calendar</h5>
+                                                <button onClick={() => setHelpTopic('google')} className="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1"><HelpCircle size={12}/> How to get?</button>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Client ID</label>
+                                                <input type="text" value={googleConfig.clientId} onChange={(e) => onUpdateGoogleConfig('clientId', e.target.value)} placeholder="e.g., 123...apps.googleusercontent.com" className="w-full text-xs p-2 border rounded-lg bg-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">API Key</label>
+                                                <input type="password" value={googleConfig.apiKey} onChange={(e) => onUpdateGoogleConfig('apiKey', e.target.value)} placeholder="AIza..." className="w-full text-xs p-2 border rounded-lg bg-white" />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="border-t border-slate-200"></div>
+                                        
+                                        {/* Microsoft Inputs */}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <h5 className="text-xs font-bold text-purple-600">Microsoft Outlook / Teams</h5>
+                                                <button onClick={() => setHelpTopic('microsoft')} className="text-xs text-slate-400 hover:text-purple-600 flex items-center gap-1"><HelpCircle size={12}/> How to get?</button>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Application (Client) ID</label>
+                                                <input type="text" value={microsoftConfig.clientId} onChange={(e) => onUpdateMicrosoftConfig('clientId', e.target.value)} placeholder="e.g., aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" className="w-full text-xs p-2 border rounded-lg bg-white" />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="border-t border-slate-200"></div>
-                                <div className="space-y-2">
-                                    <h5 className="text-xs font-bold text-purple-600">Microsoft Outlook / Teams</h5>
-                                    <input type="text" value={microsoftConfig.clientId} onChange={(e) => onUpdateMicrosoftConfig('clientId', e.target.value)} placeholder="Application (Client) ID" className="w-full text-xs p-2 border rounded-lg" />
+
+                                {/* Integration Toggles */}
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><CalendarIcon size={16} /> Integrations</h4>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white">
+                                            <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">G</div><div className="text-sm font-medium text-slate-900">Google Calendar</div></div>
+                                            <button onClick={onToggleGoogle} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${googleConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{googleConnected ? 'Disconnect' : 'Connect'}</button>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white">
+                                            <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">M</div><div className="text-sm font-medium text-slate-900">Outlook / Teams</div></div>
+                                            <button onClick={onToggleMicrosoft} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${microsoftConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>{microsoftConnected ? 'Disconnect' : 'Connect'}</button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><CalendarIcon size={16} /> Integrations</h4>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white">
-                                    <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">G</div><div className="text-sm font-medium text-slate-900">Google Calendar</div></div>
-                                    <button onClick={onToggleGoogle} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${googleConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{googleConnected ? 'Disconnect' : 'Connect'}</button>
+
+                                {/* Holidays */}
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Globe size={16} /> Holidays</h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {Object.entries(COUNTRIES).map(([code, { name, icon }]) => (
+                                            <label key={code} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                                                <div className="flex items-center gap-3"><span className="text-xl">{icon}</span><span className="text-sm font-medium text-slate-700">{name}</span></div>
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedCountries.includes(code) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'}`}>
+                                                    {selectedCountries.includes(code) && <Check size={12} className="text-white" />}
+                                                </div>
+                                                <input type="checkbox" className="hidden" checked={selectedCountries.includes(code)} onChange={() => onToggleCountry(code)} />
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white">
-                                    <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">M</div><div className="text-sm font-medium text-slate-900">Outlook / Teams</div></div>
-                                    <button onClick={onToggleMicrosoft} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${microsoftConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>{microsoftConnected ? 'Disconnect' : 'Connect'}</button>
-                                </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
                 </Modal>
             );
         };
-        // End of Part 1. Type "go" for the next part.
+
+        const WorldClockBar = ({ clocks, onAddClock, onDeleteClock }) => {
+            const [currentTime, setCurrentTime] = useState(new Date());
+            useEffect(() => {
+                const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            return (
+                <div className="px-6 pt-4 pb-2">
+                    <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
+                        {clocks.map((clock, index) => (
+                            <div key={clock.id} className="relative group min-w-[100px] flex-1 bg-slate-800 text-white p-3 rounded-xl shadow-md flex flex-col items-center justify-center border border-slate-700">
+                                <button onClick={() => onDeleteClock(clock.id)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
+                                <span className="text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">{clock.label}</span>
+                                <span className="text-xl font-bold font-mono">{currentTime.toLocaleTimeString('en-US', { timeZone: clock.zone, hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                            </div>
+                        ))}
+                        {clocks.length < 3 && (
+                            <button onClick={onAddClock} className="min-w-[40px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors text-slate-400"><Plus size={20} /></button>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Calendar Views ---
+
+        const MonthView = ({ currentDate, events, selectedCountries, onSlotClick, tasks }) => {
+            const monthStart = startOfMonth(currentDate);
+            const monthEnd = endOfMonth(monthStart);
+            const startDate = startOfWeek(monthStart);
+            const endDate = endOfWeek(monthEnd);
+            const days = eachDayOfInterval({ start: startDate, end: endDate });
+            const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            return (
+                <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+                        {weekDays.map((day, i) => (<div key={day} className={`py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-red-500 bg-red-50/50' : 'text-slate-500'}`}>{day}</div>))}
+                    </div>
+                    <div className="grid grid-cols-7 grid-rows-5 flex-1 auto-rows-fr">
+                        {days.map((day) => {
+                            const isSun = getDay(day) === 0;
+                            const dayEvents = events.filter(e => isSameDay(new Date(e.start), day));
+                            const isCurrentMonth = isSameMonth(day, monthStart);
+                            const holidays = getHolidaysForDate(day, selectedCountries);
+                            return (
+                                <div key={day.toString()} onClick={() => onSlotClick(day, 9)} className={`min-h-[80px] border-r border-b border-slate-100 p-1 transition-colors hover:bg-slate-50 relative group cursor-pointer ${!isCurrentMonth ? 'bg-slate-50/30' : 'bg-white'} ${isSun ? 'bg-red-50/10' : ''}`}>
+                                    <div className="flex justify-between items-start px-1 pointer-events-none">
+                                        <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-sm' : ''} ${!isToday(day) && isSun ? 'text-red-500' : ''} ${!isToday(day) && !isSun && !isCurrentMonth ? 'text-slate-300' : ''} ${!isToday(day) && !isSun && isCurrentMonth ? 'text-slate-700' : ''}`}>{format(day, 'd')}</span>
+                                    </div>
+                                    {holidays.map((h, i) => (<span key={i} className="block text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded truncate w-full">{h.name}</span>))}
+                                    <div className="mt-1 flex flex-col gap-0.5 overflow-hidden max-h-[45px]">
+                                        {dayEvents.slice(0, 3).map(ev => (
+                                            <div key={ev.id} className={`text-[10px] px-1.5 py-0.5 rounded truncate ${ev.isAllDay ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : (ev.color || 'bg-blue-100 text-blue-800')}`}>{ev.title}</div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
         const WeekView = ({ currentDate, events, tasks, selectedCountries, onDropTask, onSlotClick, onUpdateEvent }) => {
             const days = eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) });
             const hours = Array.from({ length: 24 }, (_, i) => i);
             const PIXELS_PER_HOUR = 60;
             const SNAP_MINUTES = 15;
             
-            // Auto-scroll to 8 AM on mount
             useEffect(() => {
                 const scrollContainer = document.getElementById('week-view-scroll');
-                if (scrollContainer) {
-                    scrollContainer.scrollTop = 480;
-                }
+                if (scrollContainer) scrollContainer.scrollTop = 480; // Scroll to 8 AM
             }, []);
             
-            // --- Layout Engine for Side-by-Side Events ---
             const calculateEventLayout = (dayEvents) => {
-                // Filter out all-day events, they go in the top row
                 const timedEvents = dayEvents.filter(e => !e.isAllDay);
-                
-                // Sort by start time, then duration
                 const sortedEvents = [...timedEvents].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
                 const lanes = [];
-
-                // Simple greedy algorithm to pack events into columns
                 sortedEvents.forEach(event => {
                     let placed = false;
                     for (let i = 0; i < lanes.length; i++) {
                         const lane = lanes[i];
                         const lastEventInLane = lane[lane.length - 1];
-                        // If no overlap with the last event in this lane
                         if (!lastEventInLane || lastEventInLane.end <= event.start) {
-                            lane.push(event);
-                            event.laneIndex = i;
-                            placed = true;
-                            break;
+                            lane.push(event); event.laneIndex = i; placed = true; break;
                         }
                     }
-                    // If it overlaps with all existing lanes, create a new one
-                    if (!placed) {
-                        lanes.push([event]);
-                        event.laneIndex = lanes.length - 1;
-                    }
+                    if (!placed) { lanes.push([event]); event.laneIndex = lanes.length - 1; }
                 });
-
                 return { sortedEvents, laneCount: lanes.length };
             };
 
@@ -398,13 +539,10 @@
                 const snappedMinutes = Math.floor(rawMinutes / SNAP_MINUTES) * SNAP_MINUTES;
                 const hour = Math.floor(snappedMinutes / 60);
                 const minutes = snappedMinutes % 60;
-
                 const taskId = e.dataTransfer.getData('taskId');
                 const eventId = e.dataTransfer.getData('eventId');
-
-                if (taskId) {
-                    onDropTask(taskId, day, hour, minutes);
-                } else if (eventId) {
+                if (taskId) { onDropTask(taskId, day, hour, minutes); } 
+                else if (eventId) {
                     const event = events.find(e => e.id === eventId);
                     if (event && !event.isAllDay) {
                         const duration = differenceInMinutes(new Date(event.end), new Date(event.start));
@@ -417,11 +555,9 @@
             };
 
             const handleResizeStart = (e, event) => {
-                e.stopPropagation(); 
-                e.preventDefault();
+                e.stopPropagation(); e.preventDefault();
                 const startY = e.clientY;
                 const originalEnd = new Date(event.end);
-                
                 const handleMouseMove = (moveEvent) => {
                     const deltaY = moveEvent.clientY - startY;
                     const deltaMinutes = (deltaY / PIXELS_PER_HOUR) * 60;
@@ -429,18 +565,15 @@
                     if (snappedDelta !== 0) {
                         const newEnd = new Date(originalEnd);
                         newEnd.setMinutes(originalEnd.getMinutes() + snappedDelta);
-                        // Minimum 15 mins
                         if (differenceInMinutes(newEnd, new Date(event.start)) >= 15) {
                             onUpdateEvent({ ...event, end: newEnd });
                         }
                     }
                 };
-                
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
                 };
-                
                 window.addEventListener('mousemove', handleMouseMove);
                 window.addEventListener('mouseup', handleMouseUp);
             };
@@ -454,7 +587,6 @@
 
             return (
                 <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    {/* 1. Date Headers */}
                     <div className="flex border-b border-slate-200 ml-16">
                         {days.map(day => {
                             const isSun = getDay(day) === 0;
@@ -467,38 +599,24 @@
                         })}
                     </div>
 
-                    {/* 2. All-Day Section (Separate Row) */}
+                    {/* All Day Row */}
                     <div className="flex border-b border-slate-200 bg-slate-50 min-h-[40px] ml-16">
                          {days.map(day => {
                             const allDayEvents = events.filter(e => isSameDay(new Date(e.start), day) && e.isAllDay);
                             const holidays = getHolidaysForDate(day, selectedCountries);
-                            
                             return (
                                 <div key={'allday-'+day} className="flex-1 border-r border-slate-200 p-1 flex flex-col gap-1">
-                                    {/* Holidays */}
-                                    {holidays.map((h, i) => (
-                                        <div key={'h'+i} className="text-[9px] font-bold text-slate-500 text-center bg-white border border-slate-200 rounded px-1 truncate select-none">
-                                            {h.name}
-                                        </div>
-                                    ))}
-                                    {/* All Day Tasks */}
+                                    {holidays.map((h, i) => (<div key={'h'+i} className="text-[9px] font-bold text-slate-500 text-center bg-white border border-slate-200 rounded px-1 truncate select-none">{h.name}</div>))}
                                     {allDayEvents.map(ev => (
-                                        <div 
-                                            key={ev.id} 
-                                            onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }}
-                                            className={`text-[10px] font-medium px-1 py-0.5 rounded truncate border cursor-pointer hover:opacity-80 ${ev.color || 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}
-                                        >
-                                            {ev.title}
-                                        </div>
+                                        <div key={ev.id} onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }} className={`text-[10px] font-medium px-1 py-0.5 rounded truncate border cursor-pointer hover:opacity-80 ${ev.color || 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>{ev.title}</div>
                                     ))}
                                 </div>
                             );
                          })}
                     </div>
 
-                    {/* 3. Main Timeline Grid */}
+                    {/* Main Grid */}
                     <div id="week-view-scroll" className="flex-1 overflow-y-auto custom-scrollbar relative flex">
-                        {/* Time Labels */}
                         <div className="w-16 flex-shrink-0 bg-slate-50 border-r border-slate-200 text-xs text-slate-400 font-medium">
                             {hours.map(hour => (
                                 <div key={hour} className="relative border-b border-transparent" style={{ height: `${PIXELS_PER_HOUR}px` }}>
@@ -506,62 +624,24 @@
                                 </div>
                             ))}
                         </div>
-
-                        {/* Days Columns */}
                         {days.map(day => {
-                            // Filter only timed events for the grid
                             const dayEvents = events.filter(e => isSameDay(new Date(e.start), day));
                             const { sortedEvents, laneCount } = calculateEventLayout(dayEvents);
                             const isSun = getDay(day) === 0;
-                            
                             return (
-                                <div 
-                                    key={day.toString()}
-                                    onDragOver={e => e.preventDefault()}
-                                    onDrop={(e) => handleDrop(e, day)}
-                                    className={`flex-1 relative border-r border-slate-100 last:border-0 hover:bg-slate-50 ${isSun ? 'bg-red-50/5' : ''}`}
-                                    style={{ height: `${24 * PIXELS_PER_HOUR}px` }}
-                                >
-                                    {/* Hour Grid Lines */}
-                                    {hours.map(h => (
-                                        <div 
-                                            key={h} 
-                                            onClick={(e) => handleSlotClickInternal(e, day, h)}
-                                            className="border-b border-slate-100 w-full absolute cursor-pointer hover:bg-indigo-50/30" 
-                                            style={{ top: `${h * PIXELS_PER_HOUR}px`, height: `${PIXELS_PER_HOUR}px` }}
-                                        ></div>
-                                    ))}
-
-                                    {/* Render Timed Events */}
+                                <div key={day.toString()} onDragOver={e => e.preventDefault()} onDrop={(e) => handleDrop(e, day)} className={`flex-1 relative border-r border-slate-100 last:border-0 hover:bg-slate-50 ${isSun ? 'bg-red-50/5' : ''}`} style={{ height: `${24 * PIXELS_PER_HOUR}px` }}>
+                                    {hours.map(h => (<div key={h} onClick={(e) => handleSlotClickInternal(e, day, h)} className="border-b border-slate-100 w-full absolute cursor-pointer hover:bg-indigo-50/30" style={{ top: `${h * PIXELS_PER_HOUR}px`, height: `${PIXELS_PER_HOUR}px` }}></div>))}
                                     {sortedEvents.map(event => {
                                         const startMin = event.start.getHours() * 60 + event.start.getMinutes();
                                         const duration = differenceInMinutes(new Date(event.end), new Date(event.start));
                                         const linkedTask = tasks.find(t => t.id === event.taskId);
                                         const isDone = linkedTask?.completed;
-                                        
-                                        // Layout Calculations
                                         const widthPercent = 100 / (laneCount || 1);
                                         const leftPercent = (event.laneIndex || 0) * widthPercent;
-
                                         return (
-                                            <div
-                                                key={event.id}
-                                                draggable
-                                                onDragStart={(e) => { e.dataTransfer.setData('eventId', event.id); }}
-                                                onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, event); }}
-                                                className={`absolute rounded-md text-xs border shadow-sm z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all select-none
-                                                    ${isDone ? 'bg-slate-200 border-slate-300 text-slate-400 line-through' : (event.color || 'bg-blue-100 border-blue-200 text-blue-700')}
-                                                `}
-                                                style={{
-                                                    top: `${startMin * (PIXELS_PER_HOUR / 60)}px`,
-                                                    height: `${Math.max(duration * (PIXELS_PER_HOUR / 60), 15)}px`,
-                                                    left: `${leftPercent}%`,
-                                                    width: `${widthPercent}%`,
-                                                    zIndex: 10 + (event.laneIndex || 0) // Ensure stacking order
-                                                }}
-                                            >
-                                                <div className="px-1 py-0.5 font-semibold truncate leading-tight pointer-events-none">{event.title}</div>
-                                                <div className="px-1 text-[9px] opacity-75 pointer-events-none">{format(new Date(event.start), 'h:mm a')} - {format(new Date(event.end), 'h:mm a')}</div>
+                                            <div key={event.id} draggable onDragStart={(e) => { e.dataTransfer.setData('eventId', event.id); }} onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, event); }} className={`absolute rounded-md text-xs border shadow-sm z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all select-none ${isDone ? 'bg-slate-200 border-slate-300 text-slate-400 line-through' : (event.color || 'bg-blue-100 border-blue-200 text-blue-700')}`} style={{ top: `${startMin * (PIXELS_PER_HOUR / 60)}px`, height: `${Math.max(duration * (PIXELS_PER_HOUR / 60), 15)}px`, left: `${leftPercent}%`, width: `${widthPercent}%`, zIndex: 10 + (event.laneIndex || 0) }}>
+                                                <div className="px-1 py-0.5 font-semibold truncate leading-tight">{event.title}</div>
+                                                <div className="px-1 text-[9px] opacity-75">{format(new Date(event.start), 'h:mm a')} - {format(new Date(event.end), 'h:mm a')}</div>
                                                 <div className="resize-handle" onMouseDown={(e) => handleResizeStart(e, event)}></div>
                                             </div>
                                         );
@@ -577,18 +657,15 @@
         // --- Main App Logic ---
 
         function App() {
-            // --- State ---
             const [tasks, setTasks] = useLocalStorage('ai-planner-tasks', []);
             const [events, setEvents] = useLocalStorage('ai-planner-events', []);
             const [selectedCountries, setSelectedCountries] = useLocalStorage('ai-planner-countries', ['US']);
             const [clocks, setClocks] = useLocalStorage('ai-planner-clocks', [{ id: 'local', label: 'Local', zone: Intl.DateTimeFormat().resolvedOptions().timeZone }]);
             const [wordCounts, setWordCounts] = useLocalStorage('ai-planner-word-freq', {'Meeting': 10, 'Call': 8});
             
-            // Auth Configs
             const [googleConfig, setGoogleConfig] = useLocalStorage('ai-planner-google-config', { clientId: '', apiKey: '' });
             const [microsoftConfig, setMicrosoftConfig] = useLocalStorage('ai-planner-microsoft-config', { clientId: '' });
 
-            // UI State
             const [viewMode, setViewMode] = useState('week');
             const [currentDate, setCurrentDate] = useState(new Date());
             const [inputValue, setInputValue] = useState('');
@@ -600,73 +677,32 @@
             const [overdueTask, setOverdueTask] = useState(null);
             const [selectedCategory, setSelectedCategory] = useState('medium');
             
-            // Connection Status
             const [googleConnected, setGoogleConnected] = useState(false);
             const [microsoftConnected, setMicrosoftConnected] = useState(false);
             
             const tokenClient = useRef(null);
             const msalInstance = useRef(null);
 
-            // --- Helper Functions ---
-            const updateWordFreq = (text) => {
-                if (!text) return;
-                const words = text.split(/[\s,.]+/);
-                const updates = { ...wordCounts };
-                words.forEach(w => { const clean = w.trim(); if (clean.length > 2) updates[clean] = (updates[clean] || 0) + 1; });
-                setWordCounts(updates);
-            };
+            const updateWordFreq = (text) => { if(!text)return; const w=text.split(/[\s,.]+/); const u={...wordCounts}; w.forEach(x=>{if(x.length>2)u[x]=(u[x]||0)+1}); setWordCounts(u); };
 
-            // --- Google Calendar Init & Sync ---
+            // --- Sync Handlers ---
             const initGoogleAPI = () => {
-                if (typeof window.google === 'undefined' || typeof window.gapi === 'undefined') return;
-                if (!googleConfig.clientId || !googleConfig.apiKey) return;
-
-                const gapi = window.gapi;
-                const google = window.google;
-
+                if (typeof window.google === 'undefined' || !googleConfig.clientId) return;
+                const gapi = window.gapi; const google = window.google;
                 gapi.load('client', async () => {
-                    try {
-                        await gapi.client.init({ apiKey: googleConfig.apiKey, discoveryDocs: [GOOGLE_DISCOVERY_DOC] });
-                        if (!gapi.client.calendar) await gapi.client.load('calendar', 'v3');
-                    } catch (e) {
-                        console.error("GAPI Init Error", e);
-                        if (e.result?.error?.code === 403) setAiMessage("Error 403: Enable Google Calendar API in Cloud Console.");
-                    }
+                    try { await gapi.client.init({ apiKey: googleConfig.apiKey, discoveryDocs: [GOOGLE_DISCOVERY_DOC] }); if(!gapi.client.calendar) await gapi.client.load('calendar', 'v3'); } catch (e) { console.error("GAPI Error", e); if(e.result?.error?.code === 403) setAiMessage("Enable Google Calendar API in Cloud Console."); }
                 });
-
-                tokenClient.current = google.accounts.oauth2.initTokenClient({
-                    client_id: googleConfig.clientId,
-                    scope: GOOGLE_SCOPES,
-                    callback: async (resp) => {
-                        if (resp.error) { setAiMessage("Google Auth Error: " + resp.error.message); return; }
-                        if (window.gapi) window.gapi.client.setToken(resp);
-                        setGoogleConnected(true);
-                        await listGoogleEvents();
-                    },
-                });
+                tokenClient.current = google.accounts.oauth2.initTokenClient({ client_id: googleConfig.clientId, scope: GOOGLE_SCOPES, callback: async (resp) => { if (resp.error) return; if (window.gapi) window.gapi.client.setToken(resp); setGoogleConnected(true); await listGoogleEvents(); } });
             };
 
-            // --- Microsoft Graph Init & Sync ---
             const initMicrosoftAPI = () => {
                 if (!window.msal || !microsoftConfig.clientId) return;
-                
-                const msalConfig = {
-                    auth: {
-                        clientId: microsoftConfig.clientId,
-                        redirectUri: window.location.href.split('?')[0],
-                    },
-                    cache: { cacheLocation: "sessionStorage" }
-                };
-                
+                const msalConfig = { auth: { clientId: microsoftConfig.clientId, redirectUri: window.location.href.split('?')[0] }, cache: { cacheLocation: "sessionStorage" } };
                 msalInstance.current = new window.msal.PublicClientApplication(msalConfig);
                 msalInstance.current.initialize().then(() => {
-                   const accounts = msalInstance.current.getAllAccounts();
-                   if (accounts.length > 0) {
-                       msalInstance.current.setActiveAccount(accounts[0]);
-                       setMicrosoftConnected(true);
-                       listMicrosoftEvents();
-                   }
-                }).catch(e => console.error("MSAL Init Error", e));
+                    const accounts = msalInstance.current.getAllAccounts();
+                    if (accounts.length > 0) { msalInstance.current.setActiveAccount(accounts[0]); setMicrosoftConnected(true); listMicrosoftEvents(); }
+                });
             };
 
             useEffect(() => { initGoogleAPI(); }, [googleConfig]);
@@ -678,37 +714,25 @@
                     const startRange = new Date(); startRange.setDate(startRange.getDate() - 30);
                     const request = { 'calendarId': 'primary', 'timeMin': startRange.toISOString(), 'showDeleted': false, 'singleEvents': true, 'maxResults': 100, 'orderBy': 'startTime' };
                     const response = await window.gapi.client.calendar.events.list(request);
-                    
                     const realEvents = response.result.items.map(item => {
-                        // Check if it's all day (date only, no dateTime)
                         const isAllDay = !item.start.dateTime;
                         return {
-                            id: item.id,
-                            title: item.summary,
-                            isAllDay: isAllDay,
-                            // If all day, use parseLocalDate to avoid timezone shifts. If timed, use standard Date constructor
+                            id: item.id, title: item.summary, isAllDay,
                             start: isAllDay ? parseLocalDate(item.start.date) : new Date(item.start.dateTime),
                             end: isAllDay ? parseLocalDate(item.end.date) : new Date(item.end.dateTime),
-                            color: 'bg-blue-50 border-blue-200 text-blue-700',
-                            type: 'google'
+                            color: 'bg-blue-50 border-blue-200 text-blue-700', type: 'google'
                         };
                     });
-                    
-                    setEvents(prev => {
-                        // Remove old google events
-                        const others = prev.filter(e => e.type !== 'google');
-                        return [...others, ...realEvents];
-                    });
+                    setEvents(prev => [...prev.filter(e => e.type !== 'google'), ...realEvents]);
                     setAiMessage(`Synced ${realEvents.length} Google events.`);
-                } catch (err) { console.error(err); setAiMessage("Google Sync Failed."); }
+                } catch (err) { console.error(err); setAiMessage("Google Sync Failed"); }
             };
 
             const listMicrosoftEvents = async () => {
                 if (!msalInstance.current) return;
                 try {
                     const response = await msalInstance.current.acquireTokenSilent({ scopes: MS_GRAPH_SCOPES });
-                    const headers = new Headers();
-                    headers.append("Authorization", `Bearer ${response.accessToken}`);
+                    const headers = new Headers(); headers.append("Authorization", `Bearer ${response.accessToken}`);
                     headers.append("Prefer", 'outlook.timezone="UTC"'); 
 
                     const start = new Date(); start.setDate(start.getDate() - 30);
@@ -717,37 +741,22 @@
                     
                     const graphRes = await fetch(url, { method: "GET", headers: headers });
                     const data = await graphRes.json();
-                    
                     if (data.value) {
                         const msEvents = data.value.map(ev => {
                             const isAllDay = ev.isAllDay;
-                            // For MS Graph UTC, All Day events usually come as YYYY-MM-DDT00:00:00Z
-                            // We treat them as local date strings to avoid shift
                             return {
-                                id: ev.id,
-                                title: ev.subject,
-                                isAllDay: isAllDay,
+                                id: ev.id, title: ev.subject, isAllDay: isAllDay,
                                 start: isAllDay ? parseLocalDate(ev.start.dateTime.split('T')[0]) : new Date(ev.start.dateTime + 'Z'),
                                 end: isAllDay ? parseLocalDate(ev.end.dateTime.split('T')[0]) : new Date(ev.end.dateTime + 'Z'),
-                                color: 'bg-purple-50 border-purple-200 text-purple-700',
-                                type: 'microsoft'
+                                color: 'bg-purple-50 border-purple-200 text-purple-700', type: 'microsoft'
                             };
                         });
-                        
-                        setEvents(prev => {
-                             const others = prev.filter(e => e.type !== 'microsoft');
-                             return [...others, ...msEvents];
-                        });
+                        setEvents(prev => [...prev.filter(e => e.type !== 'microsoft'), ...msEvents]);
                         setAiMessage(`Synced ${msEvents.length} Microsoft events.`);
                     }
-                } catch (e) {
-                    if (e instanceof window.msal.InteractionRequiredAuthError) {
-                        msalInstance.current.acquireTokenPopup({ scopes: MS_GRAPH_SCOPES }).then(listMicrosoftEvents);
-                    }
-                }
+                } catch (e) { if (e instanceof window.msal.InteractionRequiredAuthError) msalInstance.current.acquireTokenPopup({ scopes: MS_GRAPH_SCOPES }).then(listMicrosoftEvents); }
             };
 
-            // --- Manual Toggles ---
             const handleToggleGoogle = () => {
                 if (!googleConfig.clientId) { setAiMessage("Setup Google Keys first."); return; }
                 if (googleConnected) {
@@ -764,48 +773,20 @@
             const handleToggleMicrosoft = async () => {
                 if (!microsoftConfig.clientId) { setAiMessage("Setup Microsoft ID first."); return; }
                 if (!msalInstance.current) initMicrosoftAPI();
-                
                 if (microsoftConnected) {
                     const account = msalInstance.current.getActiveAccount();
                     if (account) await msalInstance.current.logoutPopup({ account });
-                    setMicrosoftConnected(false);
-                    setEvents(prev => prev.filter(e => e.type !== 'microsoft'));
+                    setMicrosoftConnected(false); setEvents(prev => prev.filter(e => e.type !== 'microsoft'));
                 } else {
-                    try {
-                        await msalInstance.current.loginPopup({ scopes: MS_GRAPH_SCOPES });
-                        const accounts = msalInstance.current.getAllAccounts();
-                        if (accounts.length > 0) {
-                            msalInstance.current.setActiveAccount(accounts[0]);
-                            setMicrosoftConnected(true);
-                            listMicrosoftEvents();
-                        }
-                    } catch(e) { console.error(e); }
+                    try { await msalInstance.current.loginPopup({ scopes: MS_GRAPH_SCOPES }); setMicrosoftConnected(true); listMicrosoftEvents(); } catch(e) { console.error(e); }
                 }
             };
 
-            // --- Background Monitor ---
             useEffect(() => {
-                const checkStatus = () => {
-                    const now = new Date();
-                    const missed = events.find(e => {
-                        const task = tasks.find(t => t.id === e.taskId);
-                        if (!task || task.completed) return false;
-                        return isBefore(new Date(e.end), now);
-                    });
-                    if (missed) { const task = tasks.find(t => t.id === missed.taskId); setOverdueTask({ event: missed, task }); }
-                };
-                
-                const syncAll = () => {
-                    if (googleConnected) listGoogleEvents();
-                    if (microsoftConnected) listMicrosoftEvents();
-                };
-
-                checkStatus();
-                const interval = setInterval(() => { checkStatus(); syncAll(); }, 900000); 
+                const interval = setInterval(() => { if (googleConnected) listGoogleEvents(); if (microsoftConnected) listMicrosoftEvents(); }, 900000);
                 return () => clearInterval(interval);
-            }, [events, tasks, googleConnected, microsoftConnected]);
+            }, [googleConnected, microsoftConnected]);
 
-            // --- Interaction Handlers ---
             const handleOverdueAction = (action) => {
                 if (!overdueTask) return;
                 if (action === 'finish') { setTasks(prev => prev.map(t => t.id === overdueTask.task.id ? { ...t, completed: true } : t)); setOverdueTask(null); setAiMessage("Task marked complete!"); }
@@ -826,7 +807,6 @@
                     setOverdueTask(null);
                 }
             };
-
             const handleUpdateGoogleConfig = (f, v) => setGoogleConfig(p => ({ ...p, [f]: v }));
             const handleUpdateMicrosoftConfig = (f, v) => setMicrosoftConfig(p => ({ ...p, [f]: v }));
             const handleToggleCountry = (c) => setSelectedCountries(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
@@ -835,9 +815,8 @@
             const handleDateNav = (dir) => setCurrentDate(prev => viewMode === 'week' ? (dir === 'next' ? addDays(prev, 7) : subDays(prev, 7)) : (dir === 'next' ? addMonths(prev, 1) : subMonths(prev, 1)));
             const handleAddTask = (e) => { e.preventDefault(); if (!inputValue.trim()) return; updateWordFreq(inputValue); setTasks(prev => [{ id: generateId(), title: inputValue, completed: false, priority: selectedCategory, createdAt: new Date(), duration: 60, scheduledFor: null }, ...prev]); setInputValue(''); };
             
-            const handleSaveItem = () => {
-                if (!activeItem) return;
-                updateWordFreq(activeItem.title); updateWordFreq(activeItem.location); updateWordFreq(activeItem.person);
+            const handleSaveItem = () => { 
+                if(!activeItem) return; 
                 const taskPayload = { id: activeItem.taskId || activeItem.id, title: activeItem.title, completed: activeItem.completed || false, priority: activeItem.priority || 'medium', location: activeItem.location||'', person: activeItem.person||'', duration: activeItem.duration || 60 };
                 setTasks(prev => { const ex = prev.some(t=>t.id===taskPayload.id); return ex ? prev.map(t=>t.id===taskPayload.id?taskPayload:t) : [...prev, taskPayload] });
                 if (activeItem.start && activeItem.end) {
