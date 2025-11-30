@@ -74,7 +74,8 @@
             Check, Plus, Calendar as CalendarIcon, Clock, MoreHorizontal, Settings, 
             Zap, MessageSquare, ArrowRight, ChevronLeft, ChevronRight, Layout, 
             X, Moon, Trash2, Edit2, GripVertical, RefreshCw, Star, AlertCircle, 
-            Globe, MapPin, User, Flag, Link as LinkIcon, Watch, Key, Mail, Sun, HelpCircle, ExternalLink
+            Globe, MapPin, User, Flag, Link as LinkIcon, Watch, Key, Mail, Sun,
+            HelpCircle, ExternalLink, FileText
         } from 'lucide-react';
         import { motion, AnimatePresence } from 'framer-motion';
         import { 
@@ -86,9 +87,7 @@
 
         // --- CONFIGURATION CONSTANTS ---
         const GOOGLE_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-        // UPDATED SCOPE: .events (Read/Write) instead of .readonly
         const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.events'; 
-        // UPDATED SCOPE: Calendars.ReadWrite
         const MS_GRAPH_SCOPES = ['User.Read', 'Calendars.ReadWrite'];
 
         // --- Utils & Hooks ---
@@ -126,6 +125,7 @@
             return [storedValue, setValue];
         }
 
+        // Helper to parse YYYY-MM-DD as local time to avoid timezone shifts
         const parseLocalDate = (dateStr) => {
             if (!dateStr) return new Date();
             const parts = dateStr.split('-');
@@ -163,14 +163,23 @@
         };
 
         const TIMEZONES = [
-            { label: 'Local', zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
-            { label: 'New York (EST)', zone: 'America/New_York' },
-            { label: 'London (GMT)', zone: 'Europe/London' },
-            { label: 'Seoul (KST)', zone: 'Asia/Seoul' },
-            { label: 'Tokyo (JST)', zone: 'Asia/Tokyo' },
-            { label: 'Paris (CET)', zone: 'Europe/Paris' },
-            { label: 'Berlin (CET)', zone: 'Europe/Berlin' },
-            { label: 'Sydney (AEDT)', zone: 'Australia/Sydney' },
+            { label: 'Local System Time', zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+            { label: 'Honolulu (HST)', zone: 'Pacific/Honolulu' },
+            { label: 'Los Angeles, Vancouver, Seattle (PST)', zone: 'America/Los_Angeles' },
+            { label: 'Denver, Phoenix, Calgary (MST)', zone: 'America/Denver' },
+            { label: 'Chicago, Dallas, Mexico City (CST)', zone: 'America/Chicago' },
+            { label: 'New York, Toronto, Miami (EST)', zone: 'America/New_York' },
+            { label: 'Sao Paulo, Buenos Aires (BRT)', zone: 'America/Sao_Paulo' },
+            { label: 'London, Dublin, Lisbon (GMT)', zone: 'Europe/London' },
+            { label: 'Paris, Berlin, Rome, Madrid (CET)', zone: 'Europe/Paris' },
+            { label: 'Athens, Cairo, Jerusalem (EET)', zone: 'Europe/Athens' },
+            { label: 'Moscow, Dubai (MSK/GST)', zone: 'Asia/Dubai' },
+            { label: 'Mumbai, New Delhi (IST)', zone: 'Asia/Kolkata' },
+            { label: 'Bangkok, Jakarta, Hanoi (ICT)', zone: 'Asia/Bangkok' },
+            { label: 'Singapore, Beijing, Hong Kong (SGT)', zone: 'Asia/Singapore' },
+            { label: 'Tokyo, Seoul (JST/KST)', zone: 'Asia/Tokyo' },
+            { label: 'Sydney, Melbourne (AEDT)', zone: 'Australia/Sydney' },
+            { label: 'Auckland, Wellington (NZDT)', zone: 'Pacific/Auckland' }
         ];
 
         const HOLIDAYS_DB = {
@@ -356,7 +365,7 @@
                                         <div className="border-t border-slate-200"></div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center"><h5 className="text-xs font-bold text-purple-600">Microsoft Outlook / Teams</h5><button onClick={() => setHelpTopic('microsoft')} className="text-[10px] font-bold text-slate-400 hover:text-purple-600 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200"><HelpCircle size={10}/> Setup</button></div>
-                                            <input type="text" value={microsoftConfig.clientId} onChange={(e) => onUpdateMicrosoftConfig('clientId', e.target.value)} placeholder="Client ID" className="w-full text-xs p-2 border rounded-lg bg-white" />
+                                            <input type="text" value={microsoftConfig.clientId} onChange={(e) => onUpdateMicrosoftConfig('clientId', e.target.value)} placeholder="Application (Client) ID" className="w-full text-xs p-2 border rounded-lg bg-white" />
                                         </div>
                                     </div>
                                 </div>
@@ -371,6 +380,20 @@
                                             <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">M</div><div className="text-sm font-medium text-slate-900">Outlook / Teams</div></div>
                                             <button onClick={onToggleMicrosoft} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${microsoftConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>{microsoftConnected ? 'Disconnect' : 'Connect'}</button>
                                         </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Globe size={16} /> Holidays</h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {Object.entries(COUNTRIES).map(([code, { name, icon }]) => (
+                                            <label key={code} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                                                <div className="flex items-center gap-3"><span className="text-xl">{icon}</span><span className="text-sm font-medium text-slate-700">{name}</span></div>
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedCountries.includes(code) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'}`}>
+                                                    {selectedCountries.includes(code) && <Check size={12} className="text-white" />}
+                                                </div>
+                                                <input type="checkbox" className="hidden" checked={selectedCountries.includes(code)} onChange={() => onToggleCountry(code)} />
+                                            </label>
+                                        ))}
                                     </div>
                                 </div>
                             </>
@@ -393,7 +416,7 @@
                         {clocks.map((clock, index) => (
                             <div key={clock.id} className="relative group min-w-[100px] flex-1 bg-slate-800 text-white p-3 rounded-xl shadow-md flex flex-col items-center justify-center border border-slate-700">
                                 <button onClick={() => onDeleteClock(clock.id)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
-                                <span className="text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">{clock.label}</span>
+                                <span className="text-xs font-medium text-slate-300 uppercase tracking-wider mb-1 truncate w-full text-center px-1">{clock.label}</span>
                                 <span className="text-xl font-bold font-mono">{currentTime.toLocaleTimeString('en-US', { timeZone: clock.zone, hour: 'numeric', minute: '2-digit', hour12: true })}</span>
                             </div>
                         ))}
@@ -404,7 +427,8 @@
                 </div>
             );
         };
-// --- Calendar Views ---
+
+        // --- Calendar Views ---
 
         const MonthView = ({ currentDate, events, selectedCountries, onSlotClick, tasks }) => {
             const monthStart = startOfMonth(currentDate);
@@ -417,51 +441,24 @@
             return (
                 <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
-                        {weekDays.map((day, i) => (
-                            <div key={day} className={`py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-red-500 bg-red-50/50' : 'text-slate-500'}`}>{day}</div>
-                        ))}
+                        {weekDays.map((day, i) => (<div key={day} className={`py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-red-500 bg-red-50/50' : 'text-slate-500'}`}>{day}</div>))}
                     </div>
                     <div className="grid grid-cols-7 grid-rows-5 flex-1 auto-rows-fr">
-                        {days.map((day, idx) => {
+                        {days.map((day) => {
                             const isSun = getDay(day) === 0;
                             const dayEvents = events.filter(e => isSameDay(new Date(e.start), day));
                             const isCurrentMonth = isSameMonth(day, monthStart);
                             const holidays = getHolidaysForDate(day, selectedCountries);
-
                             return (
-                                <div 
-                                    key={day.toString()} 
-                                    onClick={() => onSlotClick(day, 9)} 
-                                    className={`
-                                        min-h-[80px] border-r border-b border-slate-100 p-1 transition-colors hover:bg-slate-50 relative group cursor-pointer
-                                        ${!isCurrentMonth ? 'bg-slate-50/30' : 'bg-white'} ${isSun ? 'bg-red-50/10' : ''}
-                                    `}
-                                >
+                                <div key={day.toString()} onClick={() => onSlotClick(day, 9)} className={`min-h-[80px] border-r border-b border-slate-100 p-1 transition-colors hover:bg-slate-50 relative group cursor-pointer ${!isCurrentMonth ? 'bg-slate-50/30' : 'bg-white'} ${isSun ? 'bg-red-50/10' : ''}`}>
                                     <div className="flex justify-between items-start px-1 pointer-events-none">
                                         <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-sm' : ''} ${!isToday(day) && isSun ? 'text-red-500' : ''} ${!isToday(day) && !isSun && !isCurrentMonth ? 'text-slate-300' : ''} ${!isToday(day) && !isSun && isCurrentMonth ? 'text-slate-700' : ''}`}>{format(day, 'd')}</span>
                                     </div>
-                                    {holidays.length > 0 && (
-                                        <div className="mt-0.5 flex flex-wrap gap-1 pointer-events-none">
-                                            {holidays.map((h, i) => (
-                                                <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded truncate w-full block">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</span>
-                                            ))}
-                                        </div>
-                                    )}
+                                    {holidays.map((h, i) => (<span key={i} className="block text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded truncate w-full">{h.name}</span>))}
                                     <div className="mt-1 flex flex-col gap-0.5 overflow-hidden max-h-[45px]">
-                                        {dayEvents.slice(0, 3).map(ev => {
-                                            const linkedTask = tasks.find(t => t.id === ev.taskId);
-                                            const isDone = linkedTask?.completed;
-                                            return (
-                                                <div 
-                                                    key={ev.id} 
-                                                    onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }}
-                                                    className={`text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${isDone ? 'bg-slate-200 text-slate-500 line-through' : (ev.color || 'bg-blue-100 text-blue-800')}`}
-                                                >
-                                                    {ev.title}
-                                                </div>
-                                            );
-                                        })}
-                                        {dayEvents.length > 3 && <div className="text-[9px] text-slate-400 pl-1 pointer-events-none">+{dayEvents.length - 3} more</div>}
+                                        {dayEvents.slice(0, 3).map(ev => (
+                                            <div key={ev.id} className={`text-[10px] px-1.5 py-0.5 rounded truncate ${ev.isAllDay ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : (ev.color || 'bg-blue-100 text-blue-800')}`}>{ev.title}</div>
+                                        ))}
                                     </div>
                                 </div>
                             );
@@ -477,16 +474,12 @@
             const PIXELS_PER_HOUR = 60;
             const SNAP_MINUTES = 15;
             
-            // Auto-scroll to 8 AM on mount
             useEffect(() => {
                 const scrollContainer = document.getElementById('week-view-scroll');
-                if (scrollContainer) {
-                    scrollContainer.scrollTop = 480;
-                }
+                if (scrollContainer) scrollContainer.scrollTop = 480;
             }, []);
             
             const calculateEventLayout = (dayEvents) => {
-                // Filter out all-day events from grid calculation
                 const timedEvents = dayEvents.filter(e => !e.isAllDay);
                 const sortedEvents = [...timedEvents].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
                 const lanes = [];
@@ -560,33 +553,34 @@
 
             return (
                 <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    {/* Header Row */}
                     <div className="flex border-b border-slate-200 ml-16">
                         {days.map(day => {
                             const isSun = getDay(day) === 0;
-                            const holidays = getHolidaysForDate(day, selectedCountries);
                             return (
                                 <div key={day.toString()} className={`flex-1 py-3 text-center border-r border-slate-100 last:border-0 ${isSun ? 'bg-red-50/20' : ''}`}>
                                     <div className={`text-xs font-bold uppercase ${isSun ? 'text-red-500' : 'text-slate-500'}`}>{format(day, 'EEE')}</div>
                                     <div className={`text-sm font-bold mt-1 inline-block w-8 h-8 leading-8 rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-md' : isSun ? 'text-red-600' : 'text-slate-700'}`}>{format(day, 'd')}</div>
-                                    {holidays.length > 0 && (
-                                        <div className="flex flex-col gap-0.5 mt-1 px-1">
-                                            {holidays.map((h, i) => (
-                                                <div key={i} className="text-[9px] font-medium truncate text-slate-500 bg-slate-100/50 rounded px-1">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</div>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             );
                         })}
                     </div>
 
-                    {/* All Day Row */}
+                    {/* NEW: All Day Row */}
                     <div className="flex border-b border-slate-200 bg-slate-50 min-h-[40px] ml-16">
                          {days.map(day => {
                             const allDayEvents = events.filter(e => isSameDay(new Date(e.start), day) && e.isAllDay);
+                            const holidays = getHolidaysForDate(day, selectedCountries);
                             
                             return (
-                                <div key={'allday-'+day} className="flex-1 border-r border-slate-200 p-1 flex flex-col gap-1">
+                                <div key={'allday-'+day} className="flex-1 border-r border-slate-200 p-1 flex flex-col gap-1 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => onSlotClick(day, null, null, 0, true)}>
+                                    {/* Holidays */}
+                                    {holidays.map((h, i) => (
+                                        <div key={'h'+i} className="text-[9px] font-bold text-slate-500 text-center bg-white border border-slate-200 rounded px-1 truncate select-none">
+                                            {h.name}
+                                        </div>
+                                    ))}
+                                    {/* All Day Tasks */}
                                     {allDayEvents.map(ev => (
                                         <div 
                                             key={ev.id} 
@@ -624,7 +618,7 @@
                                         const widthPercent = 100 / (laneCount || 1);
                                         const leftPercent = (event.laneIndex || 0) * widthPercent;
                                         return (
-                                            <div key={event.id} draggable onDragStart={(e) => { e.dataTransfer.setData('eventId', event.id); }} onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, event); }} className={`absolute rounded-md text-xs border shadow-sm z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all select-none ${isDone ? 'bg-slate-200 border-slate-300 text-slate-400 line-through' : (event.color || 'bg-blue-100 border-blue-200 text-blue-700')}`} style={{ top: `${startMin * (PIXELS_PER_HOUR / 60)}px`, height: `${Math.max(duration * (PIXELS_PER_HOUR / 60), 15)}px`, left: `${leftPercent}%`, width: `${widthPercent}%`, zIndex: 10 + (event.laneIndex || 0) }}>
+                                            <div key={event.id} draggable onDragStart={(e) => { e.dataTransfer.setData('eventId', event.id); }} onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, event); }} className={`absolute rounded-md text-xs border shadow-sm z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all select-none ${event.color || 'bg-blue-100 border-blue-200 text-blue-700'}`} style={{ top: `${startMin * (PIXELS_PER_HOUR / 60)}px`, height: `${Math.max(duration * (PIXELS_PER_HOUR / 60), 15)}px`, left: `${leftPercent}%`, width: `${widthPercent}%`, zIndex: 10 + (event.laneIndex || 0) }}>
                                                 <div className="px-1 py-0.5 font-semibold truncate leading-tight">{event.title}</div>
                                                 <div className="px-1 text-[9px] opacity-75">{format(new Date(event.start), 'h:mm a')} - {format(new Date(event.end), 'h:mm a')}</div>
                                                 <div className="resize-handle" onMouseDown={(e) => handleResizeStart(e, event)}></div>
@@ -673,7 +667,7 @@
                 if (typeof window.google === 'undefined' || !googleConfig.clientId) return;
                 const gapi = window.gapi; const google = window.google;
                 gapi.load('client', async () => {
-                    try { await gapi.client.init({ apiKey: googleConfig.apiKey, discoveryDocs: [GOOGLE_DISCOVERY_DOC] }); if(!gapi.client.calendar) await gapi.client.load('calendar', 'v3'); } catch (e) { console.error("GAPI Error", e); if(e.result?.error?.code === 403) setAiMessage("Error 403: Enable Google Calendar API."); }
+                    try { await gapi.client.init({ apiKey: googleConfig.apiKey, discoveryDocs: [GOOGLE_DISCOVERY_DOC] }); if(!gapi.client.calendar) await gapi.client.load('calendar', 'v3'); } catch (e) { console.error("GAPI Error", e); }
                 });
                 tokenClient.current = google.accounts.oauth2.initTokenClient({ client_id: googleConfig.clientId, scope: GOOGLE_SCOPES, callback: async (resp) => { if (resp.error) return; if (window.gapi) window.gapi.client.setToken(resp); setGoogleConnected(true); await listGoogleEvents(); } });
             };
@@ -691,6 +685,60 @@
             useEffect(() => { initGoogleAPI(); }, [googleConfig]);
             useEffect(() => { initMicrosoftAPI(); }, [microsoftConfig]);
 
+            // --- 2-WAY SYNC FUNCTIONS ---
+            
+            // Google Write
+            const updateGoogleEvent = async (event, mode) => { // mode: 'insert' | 'update' | 'delete'
+                if(!googleConnected || !window.gapi?.client?.calendar) return;
+                try {
+                    const resource = {
+                        summary: event.title,
+                        description: event.description || '',
+                        location: event.location || '',
+                        start: event.isAllDay ? { date: format(event.start, 'yyyy-MM-dd') } : { dateTime: event.start.toISOString() },
+                        end: event.isAllDay ? { date: format(event.end, 'yyyy-MM-dd') } : { dateTime: event.end.toISOString() }
+                    };
+                    if (mode === 'insert') {
+                        await window.gapi.client.calendar.events.insert({ calendarId: 'primary', resource });
+                    } else if (mode === 'update' && event.id) {
+                        await window.gapi.client.calendar.events.update({ calendarId: 'primary', eventId: event.id, resource });
+                    } else if (mode === 'delete' && event.id) {
+                        await window.gapi.client.calendar.events.delete({ calendarId: 'primary', eventId: event.id });
+                    }
+                    listGoogleEvents(); // Refresh
+                } catch(e) { console.error("Google Write Error", e); }
+            };
+
+            // Microsoft Write
+            const updateMicrosoftEvent = async (event, mode) => {
+                 if (!microsoftConnected || !msalInstance.current) return;
+                 try {
+                    const response = await msalInstance.current.acquireTokenSilent({ scopes: MS_GRAPH_SCOPES });
+                    const headers = { 
+                        "Authorization": `Bearer ${response.accessToken}`, 
+                        "Content-Type": "application/json",
+                        "Prefer": 'outlook.timezone="UTC"' 
+                    };
+                    const payload = {
+                        subject: event.title,
+                        body: { content: event.description || '', contentType: 'text' },
+                        location: { displayName: event.location || '' },
+                        isAllDay: event.isAllDay,
+                        start: { dateTime: event.start.toISOString(), timeZone: "UTC" },
+                        end: { dateTime: event.end.toISOString(), timeZone: "UTC" }
+                    };
+
+                    let url = `https://graph.microsoft.com/v1.0/me/events`;
+                    let method = 'POST';
+
+                    if (mode === 'update') { url += `/${event.id}`; method = 'PATCH'; }
+                    else if (mode === 'delete') { url += `/${event.id}`; method = 'DELETE'; }
+
+                    await fetch(url, { method, headers, body: mode !== 'delete' ? JSON.stringify(payload) : null });
+                    listMicrosoftEvents(); // Refresh
+                 } catch(e) { console.error("MS Write Error", e); }
+            };
+
             const listGoogleEvents = async () => {
                 if (typeof window.gapi === 'undefined' || !window.gapi.client || !window.gapi.client.calendar) return;
                 try {
@@ -703,7 +751,8 @@
                             id: item.id, title: item.summary, isAllDay,
                             start: isAllDay ? parseLocalDate(item.start.date) : new Date(item.start.dateTime),
                             end: isAllDay ? parseLocalDate(item.end.date) : new Date(item.end.dateTime),
-                            color: 'bg-blue-50 border-blue-200 text-blue-700', type: 'google'
+                            color: 'bg-blue-50 border-blue-200 text-blue-700', type: 'google',
+                            description: item.description, location: item.location
                         };
                     });
                     setEvents(prev => [...prev.filter(e => e.type !== 'google'), ...realEvents]);
@@ -731,7 +780,8 @@
                                 id: ev.id, title: ev.subject, isAllDay: isAllDay,
                                 start: isAllDay ? parseLocalDate(ev.start.dateTime.split('T')[0]) : new Date(ev.start.dateTime + 'Z'),
                                 end: isAllDay ? parseLocalDate(ev.end.dateTime.split('T')[0]) : new Date(ev.end.dateTime + 'Z'),
-                                color: 'bg-purple-50 border-purple-200 text-purple-700', type: 'microsoft'
+                                color: 'bg-purple-50 border-purple-200 text-purple-700', type: 'microsoft',
+                                description: ev.bodyPreview, location: ev.location?.displayName
                             };
                         });
                         setEvents(prev => [...prev.filter(e => e.type !== 'microsoft'), ...msEvents]);
@@ -797,22 +847,39 @@
             const onDeleteClock = (id) => setClocks(p => p.filter(c => c.id !== id));
             const handleDateNav = (dir) => setCurrentDate(prev => viewMode === 'week' ? (dir === 'next' ? addDays(prev, 7) : subDays(prev, 7)) : (dir === 'next' ? addMonths(prev, 1) : subMonths(prev, 1)));
             const handleAddTask = (e) => { e.preventDefault(); if (!inputValue.trim()) return; updateWordFreq(inputValue); setTasks(prev => [{ id: generateId(), title: inputValue, completed: false, priority: selectedCategory, createdAt: new Date(), duration: 60, scheduledFor: null }, ...prev]); setInputValue(''); };
+            
             const handleSaveItem = () => { 
                 if(!activeItem) return; 
-                const taskPayload = { id: activeItem.taskId || activeItem.id, title: activeItem.title, completed: activeItem.completed || false, priority: activeItem.priority || 'medium', location: activeItem.location||'', person: activeItem.person||'', duration: activeItem.duration || 60 };
+                const taskPayload = { id: activeItem.taskId || activeItem.id, title: activeItem.title, completed: activeItem.completed || false, priority: activeItem.priority || 'medium', location: activeItem.location||'', person: activeItem.person||'', description: activeItem.description||'', duration: activeItem.duration || 60 };
                 setTasks(prev => { const ex = prev.some(t=>t.id===taskPayload.id); return ex ? prev.map(t=>t.id===taskPayload.id?taskPayload:t) : [...prev, taskPayload] });
+                
                 if (activeItem.start && activeItem.end) {
-                     const eventPayload = { id: activeItem.eventId || generateId(), taskId: taskPayload.id, title: activeItem.title, start: activeItem.start, end: activeItem.end, color: activeItem.color || 'bg-blue-100 text-blue-800', location: activeItem.location, person: activeItem.person, isAllDay: activeItem.isAllDay };
-                     setEvents(prev => { const ex = prev.some(e=>e.id===eventPayload.id); return ex ? prev.map(e=>e.id===eventPayload.id?eventPayload:e) : [...prev, eventPayload]; });
+                     const eventPayload = { id: activeItem.eventId || generateId(), taskId: taskPayload.id, title: activeItem.title, start: activeItem.start, end: activeItem.end, color: activeItem.color || 'bg-blue-100 text-blue-800', location: activeItem.location, person: activeItem.person, description: activeItem.description, isAllDay: activeItem.isAllDay, type: activeItem.type };
+                     
+                     // Sync Logic
+                     if (activeItem.type === 'google') updateGoogleEvent(eventPayload, activeItem.eventId ? 'update' : 'insert');
+                     else if (activeItem.type === 'microsoft') updateMicrosoftEvent(eventPayload, activeItem.eventId ? 'update' : 'insert');
+                     else setEvents(prev => { const ex = prev.some(e=>e.id===eventPayload.id); return ex ? prev.map(e=>e.id===eventPayload.id?eventPayload:e) : [...prev, eventPayload]; });
                 }
                 setIsEditModalOpen(false); setActiveItem(null);
             };
-            const handleUpdateEvent = (ev) => setEvents(p => p.map(e => e.id === ev.id ? ev : e));
+
+            const handleUpdateEvent = (ev) => {
+                setEvents(p => p.map(e => e.id === ev.id ? ev : e));
+                if (ev.type === 'google') updateGoogleEvent(ev, 'update');
+                if (ev.type === 'microsoft') updateMicrosoftEvent(ev, 'update');
+            };
+
             const handleDelete = () => { 
-                if (activeItem.taskId) { setTasks(p=>p.filter(t=>t.id!==activeItem.taskId)); setEvents(p=>p.filter(e=>e.taskId!==activeItem.taskId)); }
-                else if (activeItem.id) { setTasks(p=>p.filter(t=>t.id!==activeItem.id)); setEvents(p=>p.filter(e=>e.id!==activeItem.id)); }
+                if (activeItem.type === 'google') { updateGoogleEvent(activeItem, 'delete'); }
+                else if (activeItem.type === 'microsoft') { updateMicrosoftEvent(activeItem, 'delete'); }
+                else {
+                    if (activeItem.taskId) { setTasks(p=>p.filter(t=>t.id!==activeItem.taskId)); setEvents(p=>p.filter(e=>e.taskId!==activeItem.taskId)); }
+                    else if (activeItem.id) { setTasks(p=>p.filter(t=>t.id!==activeItem.id)); setEvents(p=>p.filter(e=>e.id!==activeItem.id)); }
+                }
                 setIsEditModalOpen(false); 
             };
+
             const handleDropTask = (taskId, day, hour, minutes) => {
                 const task = tasks.find(t => t.id === taskId); if (!task) return;
                 const start = setMinutes(setHours(new Date(day), hour), minutes);
@@ -820,15 +887,15 @@
                 const newEvent = { id: generateId(), taskId: task.id, title: task.title, start, end, isAllDay: false, color: 'bg-indigo-100 text-indigo-800' };
                 setEvents(prev => [...prev, newEvent]);
             };
-            const openEditModal = (day, hour, existingItem=null, minutes=0) => {
+            const openEditModal = (day, hour, existingItem=null, minutes=0, isAllDay=false) => {
                 if (existingItem) {
-                     if (existingItem.taskId) { const t = tasks.find(x=>x.id===existingItem.taskId); setActiveItem({ ...t, eventId: existingItem.id, start: existingItem.start, end: existingItem.end, isEvent: true, isAllDay: existingItem.isAllDay }); }
+                     if (existingItem.taskId) { const t = tasks.find(x=>x.id===existingItem.taskId); setActiveItem({ ...t, eventId: existingItem.id, start: existingItem.start, end: existingItem.end, isEvent: true, isAllDay: existingItem.isAllDay, type: existingItem.type }); }
                      else if (existingItem.start) setActiveItem({ ...existingItem, isEvent: true });
                      else setActiveItem({ ...existingItem, isEvent: false });
                 } else {
                     const start = new Date(day); start.setHours(hour||9, minutes, 0, 0);
                     const end = new Date(start); end.setMinutes(start.getMinutes() + 60);
-                    setActiveItem({ id: generateId(), title: '', start, end, priority: 'medium', color: 'bg-blue-100 text-blue-800', isEvent: true, isAllDay: false });
+                    setActiveItem({ id: generateId(), title: '', start, end, priority: 'medium', color: 'bg-blue-100 text-blue-800', isEvent: true, isAllDay });
                 }
                 setIsEditModalOpen(true);
             };
@@ -900,6 +967,11 @@
                         {activeItem && (
                             <div className="space-y-4">
                                 <div><label className="text-xs font-bold text-slate-500 uppercase">Title</label><input type="text" value={activeItem.title} onChange={(e) => setActiveItem({...activeItem, title: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-lg outline-none focus:border-indigo-500 font-medium" autoFocus /></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><MapPin size={10}/> Location</label><AutocompleteInput value={activeItem.location || ''} onChange={(e) => setActiveItem({...activeItem, location: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Add link or address" wordCounts={wordCounts} /></div>
+                                    <div><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><User size={10}/> People</label><TagInput value={activeItem.person || ''} onChange={(e) => setActiveItem({...activeItem, person: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Add people (comma separated)" wordCounts={wordCounts} /></div>
+                                </div>
+                                <div><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><FileText size={10}/> Description</label><textarea value={activeItem.description || ''} onChange={(e) => setActiveItem({...activeItem, description: e.target.value})} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm h-24 resize-none" placeholder="Add notes..."></textarea></div>
                                 {activeItem.isEvent && (
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                         <div className="flex items-center justify-between mb-2">
@@ -914,6 +986,7 @@
                                         )}
                                     </div>
                                 )}
+                                <div><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Flag size={10}/> Priority / Color</label><div className="flex gap-2 mt-2">{['high', 'medium', 'low', 'personal'].map(p => (<button key={p} onClick={() => setActiveItem({...activeItem, priority: p, color: p === 'high' ? 'bg-red-100 text-red-800' : p === 'personal' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' })} className={`px-3 py-1.5 rounded-full text-xs font-bold border capitalize transition-all ${activeItem.priority === p ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>{p}</button>))}</div></div>
                                 <div className="flex gap-3 pt-4 border-t border-slate-100"><button onClick={handleSaveItem} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 transition-colors">Save Details</button><button onClick={handleDelete} className="px-4 border border-red-100 text-red-500 rounded-xl hover:bg-red-50 transition-colors"><Trash2 size={18}/></button></div>
                             </div>
                         )}
