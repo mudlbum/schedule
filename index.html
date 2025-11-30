@@ -74,8 +74,7 @@
             Check, Plus, Calendar as CalendarIcon, Clock, MoreHorizontal, Settings, 
             Zap, MessageSquare, ArrowRight, ChevronLeft, ChevronRight, Layout, 
             X, Moon, Trash2, Edit2, GripVertical, RefreshCw, Star, AlertCircle, 
-            Globe, MapPin, User, Flag, Link as LinkIcon, Watch, Key, Mail, Sun,
-            HelpCircle, ExternalLink
+            Globe, MapPin, User, Flag, Link as LinkIcon, Watch, Key, Mail, Sun, HelpCircle, ExternalLink
         } from 'lucide-react';
         import { motion, AnimatePresence } from 'framer-motion';
         import { 
@@ -87,8 +86,10 @@
 
         // --- CONFIGURATION CONSTANTS ---
         const GOOGLE_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-        const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
-        const MS_GRAPH_SCOPES = ['User.Read', 'Calendars.Read'];
+        // UPDATED SCOPE: .events (Read/Write) instead of .readonly
+        const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.events'; 
+        // UPDATED SCOPE: Calendars.ReadWrite
+        const MS_GRAPH_SCOPES = ['User.Read', 'Calendars.ReadWrite'];
 
         // --- Utils & Hooks ---
 
@@ -125,11 +126,9 @@
             return [storedValue, setValue];
         }
 
-        // Helper to parse YYYY-MM-DD as local time to avoid timezone shifts
         const parseLocalDate = (dateStr) => {
             if (!dateStr) return new Date();
             const parts = dateStr.split('-');
-            // Note: Month is 0-indexed in JS Date
             return new Date(parts[0], parts[1] - 1, parts[2]);
         };
 
@@ -165,19 +164,18 @@
 
         const TIMEZONES = [
             { label: 'Local', zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
-            { label: 'New York', zone: 'America/New_York' },
-            { label: 'London', zone: 'Europe/London' },
-            { label: 'Seoul', zone: 'Asia/Seoul' },
-            { label: 'Tokyo', zone: 'Asia/Tokyo' },
-            { label: 'Paris', zone: 'Europe/Paris' },
-            { label: 'Berlin', zone: 'Europe/Berlin' },
-            { label: 'Sydney', zone: 'Australia/Sydney' },
+            { label: 'New York (EST)', zone: 'America/New_York' },
+            { label: 'London (GMT)', zone: 'Europe/London' },
+            { label: 'Seoul (KST)', zone: 'Asia/Seoul' },
+            { label: 'Tokyo (JST)', zone: 'Asia/Tokyo' },
+            { label: 'Paris (CET)', zone: 'Europe/Paris' },
+            { label: 'Berlin (CET)', zone: 'Europe/Berlin' },
+            { label: 'Sydney (AEDT)', zone: 'Australia/Sydney' },
         ];
 
         const HOLIDAYS_DB = {
             US: { fixed: { "0-1": "New Year's", "6-4": "Independence Day", "10-11": "Veterans Day", "11-25": "Christmas" } },
             KR: { fixed: { "0-1": "New Year's", "2-1": "Indep. Move.", "4-5": "Children's Day", "7-15": "Liberation Day", "9-3": "Foundation Day", "9-9": "Hangeul Day", "11-25": "Christmas" } },
-            // Add simplified others for brevity...
             UK: { fixed: { "0-1": "New Year's", "11-25": "Christmas" } },
             JP: { fixed: { "0-1": "New Year's" } },
             CA: { fixed: { "0-1": "New Year's", "6-1": "Canada Day" } }
@@ -290,18 +288,13 @@
             );
         };
 
-        // End of Part 1. Type "go" for Part 2 (Modals, Views, App).
         // --- Modals ---
 
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }} 
-                        animate={{ opacity: 1, scale: 1 }} 
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]"
-                    >
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
                         <div className="flex justify-between items-center p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-800">{title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"><X size={20} /></button>
@@ -318,42 +311,29 @@
             googleConnected, onToggleGoogle, googleConfig, onUpdateGoogleConfig,
             microsoftConnected, onToggleMicrosoft, microsoftConfig, onUpdateMicrosoftConfig
         }) => {
-            const [helpTopic, setHelpTopic] = useState(null); // 'google' | 'microsoft' | null
+            const [helpTopic, setHelpTopic] = useState(null);
+            const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '...';
+            const currentUrl = typeof window !== 'undefined' ? window.location.href.split('?')[0].replace(/\/$/, "") : '...';
 
             const renderHelp = () => {
                 if (!helpTopic) return null;
                 const isGoogle = helpTopic === 'google';
                 return (
                     <div className="absolute inset-0 bg-white z-10 p-4 overflow-y-auto">
-                        <button onClick={() => setHelpTopic(null)} className="mb-4 flex items-center gap-2 text-sm text-indigo-600 font-medium"><ChevronLeft size={16}/> Back to Settings</button>
-                        <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
-                            {isGoogle ? 'Google Setup Guide' : 'Microsoft Setup Guide'}
-                            <ExternalLink size={14} className="text-slate-400"/>
-                        </h4>
-                        <ol className="list-decimal pl-4 text-xs text-slate-600 space-y-2">
+                        <button onClick={() => setHelpTopic(null)} className="mb-4 flex items-center gap-2 text-sm text-indigo-600 font-medium hover:underline"><ChevronLeft size={16}/> Back to Settings</button>
+                        <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">{isGoogle ? 'Google Configuration' : 'Microsoft Configuration'}</h4>
+                        <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
+                            <p className="font-bold mb-2 flex items-center gap-1"><AlertCircle size={12}/> URI Settings</p>
+                            <div className="space-y-2">
+                                <div><span className="font-semibold text-[10px] uppercase tracking-wider opacity-75">Authorized Origin</span><code className="block bg-white border border-amber-300 p-1.5 rounded mt-0.5 select-all font-mono text-indigo-600">{currentOrigin}</code></div>
+                                <div><span className="font-semibold text-[10px] uppercase tracking-wider opacity-75">Redirect URI</span><code className="block bg-white border border-amber-300 p-1.5 rounded mt-0.5 select-all font-mono text-indigo-600">{currentUrl}</code></div>
+                            </div>
+                        </div>
+                        <ol className="list-decimal pl-4 text-xs text-slate-600 space-y-3">
                             {isGoogle ? (
-                                <>
-                                    <li>Go to <a href="https://console.cloud.google.com" target="_blank" className="text-blue-500 underline">Google Cloud Console</a>.</li>
-                                    <li>Create a project and enable <strong>Google Calendar API</strong>.</li>
-                                    <li>Go to <strong>Credentials</strong> &gt; <strong>Create Credentials</strong>.</li>
-                                    <li><strong>API Key</strong>: Create one. Under "Website restrictions", add your site URL (e.g., <code>https://mudlbum.github.io/*</code>).</li>
-                                    <li><strong>OAuth Client ID</strong>: Select "Web Application".
-                                        <ul className="list-disc pl-4 mt-1 text-slate-500">
-                                            <li>Authorized Origins: <code>https://mudlbum.github.io</code> (No slash at end)</li>
-                                            <li>Authorized Redirects: <code>https://mudlbum.github.io</code></li>
-                                        </ul>
-                                    </li>
-                                    <li>Copy the Client ID and API Key below.</li>
-                                    <li><strong>Important</strong>: Add your email to the "Test Users" list in the OAuth Consent Screen.</li>
-                                </>
+                                <><li>Go to Google Credentials.</li><li>Click OAuth 2.0 Client ID.</li><li>Add Origin & Redirect URI shown above.</li><li>Save.</li></>
                             ) : (
-                                <>
-                                    <li>Go to <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" className="text-blue-500 underline">Azure App Registrations</a>.</li>
-                                    <li>Click <strong>New Registration</strong>.</li>
-                                    <li>Select "Accounts in any organizational directory and personal Microsoft accounts".</li>
-                                    <li>Under Redirect URI, select <strong>SPA</strong> and enter your URL (e.g., <code>https://mudlbum.github.io</code>).</li>
-                                    <li>Click Register. Copy the <strong>Application (client) ID</strong>.</li>
-                                </>
+                                <><li>Go to Azure App Registrations.</li><li>Select Authentication {'>'} SPA.</li><li>Add Redirect URI shown above.</li><li>Save.</li></>
                             )}
                         </ol>
                     </div>
@@ -362,45 +342,24 @@
 
             return (
                 <Modal isOpen={isOpen} onClose={onClose} title="Settings">
-                    <div className="space-y-6 relative min-h-[300px]">
+                    <div className="space-y-6 relative min-h-[400px]">
                         {helpTopic ? renderHelp() : (
                             <>
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Key size={16} /> API Credentials</h4>
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-4">
-                                        {/* Google Inputs */}
                                         <div className="space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <h5 className="text-xs font-bold text-blue-600">Google Calendar</h5>
-                                                <button onClick={() => setHelpTopic('google')} className="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1"><HelpCircle size={12}/> How to get?</button>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Client ID</label>
-                                                <input type="text" value={googleConfig.clientId} onChange={(e) => onUpdateGoogleConfig('clientId', e.target.value)} placeholder="e.g., 123...apps.googleusercontent.com" className="w-full text-xs p-2 border rounded-lg bg-white" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">API Key</label>
-                                                <input type="password" value={googleConfig.apiKey} onChange={(e) => onUpdateGoogleConfig('apiKey', e.target.value)} placeholder="AIza..." className="w-full text-xs p-2 border rounded-lg bg-white" />
-                                            </div>
+                                            <div className="flex justify-between items-center"><h5 className="text-xs font-bold text-blue-600">Google Calendar</h5><button onClick={() => setHelpTopic('google')} className="text-[10px] font-bold text-slate-400 hover:text-blue-600 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200"><HelpCircle size={10}/> Setup</button></div>
+                                            <input type="text" value={googleConfig.clientId} onChange={(e) => onUpdateGoogleConfig('clientId', e.target.value)} placeholder="Client ID" className="w-full text-xs p-2 border rounded-lg bg-white" />
+                                            <input type="password" value={googleConfig.apiKey} onChange={(e) => onUpdateGoogleConfig('apiKey', e.target.value)} placeholder="API Key" className="w-full text-xs p-2 border rounded-lg bg-white" />
                                         </div>
-                                        
                                         <div className="border-t border-slate-200"></div>
-                                        
-                                        {/* Microsoft Inputs */}
                                         <div className="space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <h5 className="text-xs font-bold text-purple-600">Microsoft Outlook / Teams</h5>
-                                                <button onClick={() => setHelpTopic('microsoft')} className="text-xs text-slate-400 hover:text-purple-600 flex items-center gap-1"><HelpCircle size={12}/> How to get?</button>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Application (Client) ID</label>
-                                                <input type="text" value={microsoftConfig.clientId} onChange={(e) => onUpdateMicrosoftConfig('clientId', e.target.value)} placeholder="e.g., aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" className="w-full text-xs p-2 border rounded-lg bg-white" />
-                                            </div>
+                                            <div className="flex justify-between items-center"><h5 className="text-xs font-bold text-purple-600">Microsoft Outlook / Teams</h5><button onClick={() => setHelpTopic('microsoft')} className="text-[10px] font-bold text-slate-400 hover:text-purple-600 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200"><HelpCircle size={10}/> Setup</button></div>
+                                            <input type="text" value={microsoftConfig.clientId} onChange={(e) => onUpdateMicrosoftConfig('clientId', e.target.value)} placeholder="Client ID" className="w-full text-xs p-2 border rounded-lg bg-white" />
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Integration Toggles */}
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><CalendarIcon size={16} /> Integrations</h4>
                                     <div className="space-y-2">
@@ -412,22 +371,6 @@
                                             <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">M</div><div className="text-sm font-medium text-slate-900">Outlook / Teams</div></div>
                                             <button onClick={onToggleMicrosoft} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${microsoftConnected ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>{microsoftConnected ? 'Disconnect' : 'Connect'}</button>
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* Holidays */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><Globe size={16} /> Holidays</h4>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {Object.entries(COUNTRIES).map(([code, { name, icon }]) => (
-                                            <label key={code} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
-                                                <div className="flex items-center gap-3"><span className="text-xl">{icon}</span><span className="text-sm font-medium text-slate-700">{name}</span></div>
-                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedCountries.includes(code) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'}`}>
-                                                    {selectedCountries.includes(code) && <Check size={12} className="text-white" />}
-                                                </div>
-                                                <input type="checkbox" className="hidden" checked={selectedCountries.includes(code)} onChange={() => onToggleCountry(code)} />
-                                            </label>
-                                        ))}
                                     </div>
                                 </div>
                             </>
@@ -461,8 +404,7 @@
                 </div>
             );
         };
-
-        // --- Calendar Views ---
+// --- Calendar Views ---
 
         const MonthView = ({ currentDate, events, selectedCountries, onSlotClick, tasks }) => {
             const monthStart = startOfMonth(currentDate);
@@ -475,24 +417,51 @@
             return (
                 <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
-                        {weekDays.map((day, i) => (<div key={day} className={`py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-red-500 bg-red-50/50' : 'text-slate-500'}`}>{day}</div>))}
+                        {weekDays.map((day, i) => (
+                            <div key={day} className={`py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-red-500 bg-red-50/50' : 'text-slate-500'}`}>{day}</div>
+                        ))}
                     </div>
                     <div className="grid grid-cols-7 grid-rows-5 flex-1 auto-rows-fr">
-                        {days.map((day) => {
+                        {days.map((day, idx) => {
                             const isSun = getDay(day) === 0;
                             const dayEvents = events.filter(e => isSameDay(new Date(e.start), day));
                             const isCurrentMonth = isSameMonth(day, monthStart);
                             const holidays = getHolidaysForDate(day, selectedCountries);
+
                             return (
-                                <div key={day.toString()} onClick={() => onSlotClick(day, 9)} className={`min-h-[80px] border-r border-b border-slate-100 p-1 transition-colors hover:bg-slate-50 relative group cursor-pointer ${!isCurrentMonth ? 'bg-slate-50/30' : 'bg-white'} ${isSun ? 'bg-red-50/10' : ''}`}>
+                                <div 
+                                    key={day.toString()} 
+                                    onClick={() => onSlotClick(day, 9)} 
+                                    className={`
+                                        min-h-[80px] border-r border-b border-slate-100 p-1 transition-colors hover:bg-slate-50 relative group cursor-pointer
+                                        ${!isCurrentMonth ? 'bg-slate-50/30' : 'bg-white'} ${isSun ? 'bg-red-50/10' : ''}
+                                    `}
+                                >
                                     <div className="flex justify-between items-start px-1 pointer-events-none">
                                         <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-sm' : ''} ${!isToday(day) && isSun ? 'text-red-500' : ''} ${!isToday(day) && !isSun && !isCurrentMonth ? 'text-slate-300' : ''} ${!isToday(day) && !isSun && isCurrentMonth ? 'text-slate-700' : ''}`}>{format(day, 'd')}</span>
                                     </div>
-                                    {holidays.map((h, i) => (<span key={i} className="block text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded truncate w-full">{h.name}</span>))}
+                                    {holidays.length > 0 && (
+                                        <div className="mt-0.5 flex flex-wrap gap-1 pointer-events-none">
+                                            {holidays.map((h, i) => (
+                                                <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded truncate w-full block">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</span>
+                                            ))}
+                                        </div>
+                                    )}
                                     <div className="mt-1 flex flex-col gap-0.5 overflow-hidden max-h-[45px]">
-                                        {dayEvents.slice(0, 3).map(ev => (
-                                            <div key={ev.id} className={`text-[10px] px-1.5 py-0.5 rounded truncate ${ev.isAllDay ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : (ev.color || 'bg-blue-100 text-blue-800')}`}>{ev.title}</div>
-                                        ))}
+                                        {dayEvents.slice(0, 3).map(ev => {
+                                            const linkedTask = tasks.find(t => t.id === ev.taskId);
+                                            const isDone = linkedTask?.completed;
+                                            return (
+                                                <div 
+                                                    key={ev.id} 
+                                                    onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }}
+                                                    className={`text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${isDone ? 'bg-slate-200 text-slate-500 line-through' : (ev.color || 'bg-blue-100 text-blue-800')}`}
+                                                >
+                                                    {ev.title}
+                                                </div>
+                                            );
+                                        })}
+                                        {dayEvents.length > 3 && <div className="text-[9px] text-slate-400 pl-1 pointer-events-none">+{dayEvents.length - 3} more</div>}
                                     </div>
                                 </div>
                             );
@@ -508,12 +477,16 @@
             const PIXELS_PER_HOUR = 60;
             const SNAP_MINUTES = 15;
             
+            // Auto-scroll to 8 AM on mount
             useEffect(() => {
                 const scrollContainer = document.getElementById('week-view-scroll');
-                if (scrollContainer) scrollContainer.scrollTop = 480; // Scroll to 8 AM
+                if (scrollContainer) {
+                    scrollContainer.scrollTop = 480;
+                }
             }, []);
             
             const calculateEventLayout = (dayEvents) => {
+                // Filter out all-day events from grid calculation
                 const timedEvents = dayEvents.filter(e => !e.isAllDay);
                 const sortedEvents = [...timedEvents].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
                 const lanes = [];
@@ -590,10 +563,18 @@
                     <div className="flex border-b border-slate-200 ml-16">
                         {days.map(day => {
                             const isSun = getDay(day) === 0;
+                            const holidays = getHolidaysForDate(day, selectedCountries);
                             return (
                                 <div key={day.toString()} className={`flex-1 py-3 text-center border-r border-slate-100 last:border-0 ${isSun ? 'bg-red-50/20' : ''}`}>
                                     <div className={`text-xs font-bold uppercase ${isSun ? 'text-red-500' : 'text-slate-500'}`}>{format(day, 'EEE')}</div>
                                     <div className={`text-sm font-bold mt-1 inline-block w-8 h-8 leading-8 rounded-full ${isToday(day) ? 'bg-indigo-600 text-white shadow-md' : isSun ? 'text-red-600' : 'text-slate-700'}`}>{format(day, 'd')}</div>
+                                    {holidays.length > 0 && (
+                                        <div className="flex flex-col gap-0.5 mt-1 px-1">
+                                            {holidays.map((h, i) => (
+                                                <div key={i} className="text-[9px] font-medium truncate text-slate-500 bg-slate-100/50 rounded px-1">{selectedCountries.length > 1 ? `[${h.country}] ` : ''}{h.name}</div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -603,19 +584,23 @@
                     <div className="flex border-b border-slate-200 bg-slate-50 min-h-[40px] ml-16">
                          {days.map(day => {
                             const allDayEvents = events.filter(e => isSameDay(new Date(e.start), day) && e.isAllDay);
-                            const holidays = getHolidaysForDate(day, selectedCountries);
+                            
                             return (
                                 <div key={'allday-'+day} className="flex-1 border-r border-slate-200 p-1 flex flex-col gap-1">
-                                    {holidays.map((h, i) => (<div key={'h'+i} className="text-[9px] font-bold text-slate-500 text-center bg-white border border-slate-200 rounded px-1 truncate select-none">{h.name}</div>))}
                                     {allDayEvents.map(ev => (
-                                        <div key={ev.id} onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }} className={`text-[10px] font-medium px-1 py-0.5 rounded truncate border cursor-pointer hover:opacity-80 ${ev.color || 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>{ev.title}</div>
+                                        <div 
+                                            key={ev.id} 
+                                            onClick={(e) => { e.stopPropagation(); onSlotClick(null, null, ev); }}
+                                            className={`text-[10px] font-medium px-1 py-0.5 rounded truncate border cursor-pointer hover:opacity-80 ${ev.color || 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}
+                                        >
+                                            {ev.title}
+                                        </div>
                                     ))}
                                 </div>
                             );
                          })}
                     </div>
 
-                    {/* Main Grid */}
                     <div id="week-view-scroll" className="flex-1 overflow-y-auto custom-scrollbar relative flex">
                         <div className="w-16 flex-shrink-0 bg-slate-50 border-r border-slate-200 text-xs text-slate-400 font-medium">
                             {hours.map(hour => (
@@ -683,14 +668,12 @@
             const tokenClient = useRef(null);
             const msalInstance = useRef(null);
 
-            const updateWordFreq = (text) => { if(!text)return; const w=text.split(/[\s,.]+/); const u={...wordCounts}; w.forEach(x=>{if(x.length>2)u[x]=(u[x]||0)+1}); setWordCounts(u); };
-
-            // --- Sync Handlers ---
+            // --- Sync Logics ---
             const initGoogleAPI = () => {
                 if (typeof window.google === 'undefined' || !googleConfig.clientId) return;
                 const gapi = window.gapi; const google = window.google;
                 gapi.load('client', async () => {
-                    try { await gapi.client.init({ apiKey: googleConfig.apiKey, discoveryDocs: [GOOGLE_DISCOVERY_DOC] }); if(!gapi.client.calendar) await gapi.client.load('calendar', 'v3'); } catch (e) { console.error("GAPI Error", e); if(e.result?.error?.code === 403) setAiMessage("Enable Google Calendar API in Cloud Console."); }
+                    try { await gapi.client.init({ apiKey: googleConfig.apiKey, discoveryDocs: [GOOGLE_DISCOVERY_DOC] }); if(!gapi.client.calendar) await gapi.client.load('calendar', 'v3'); } catch (e) { console.error("GAPI Error", e); if(e.result?.error?.code === 403) setAiMessage("Error 403: Enable Google Calendar API."); }
                 });
                 tokenClient.current = google.accounts.oauth2.initTokenClient({ client_id: googleConfig.clientId, scope: GOOGLE_SCOPES, callback: async (resp) => { if (resp.error) return; if (window.gapi) window.gapi.client.setToken(resp); setGoogleConnected(true); await listGoogleEvents(); } });
             };
@@ -757,6 +740,8 @@
                 } catch (e) { if (e instanceof window.msal.InteractionRequiredAuthError) msalInstance.current.acquireTokenPopup({ scopes: MS_GRAPH_SCOPES }).then(listMicrosoftEvents); }
             };
 
+            // --- Standard Handlers ---
+            const updateWordFreq = (text) => { if(!text)return; const w=text.split(/[\s,.]+/); const u={...wordCounts}; w.forEach(x=>{if(x.length>2)u[x]=(u[x]||0)+1}); setWordCounts(u); };
             const handleToggleGoogle = () => {
                 if (!googleConfig.clientId) { setAiMessage("Setup Google Keys first."); return; }
                 if (googleConnected) {
@@ -769,7 +754,6 @@
                     else initGoogleAPI();
                 }
             };
-
             const handleToggleMicrosoft = async () => {
                 if (!microsoftConfig.clientId) { setAiMessage("Setup Microsoft ID first."); return; }
                 if (!msalInstance.current) initMicrosoftAPI();
@@ -781,7 +765,6 @@
                     try { await msalInstance.current.loginPopup({ scopes: MS_GRAPH_SCOPES }); setMicrosoftConnected(true); listMicrosoftEvents(); } catch(e) { console.error(e); }
                 }
             };
-
             useEffect(() => {
                 const interval = setInterval(() => { if (googleConnected) listGoogleEvents(); if (microsoftConnected) listMicrosoftEvents(); }, 900000);
                 return () => clearInterval(interval);
@@ -814,7 +797,6 @@
             const onDeleteClock = (id) => setClocks(p => p.filter(c => c.id !== id));
             const handleDateNav = (dir) => setCurrentDate(prev => viewMode === 'week' ? (dir === 'next' ? addDays(prev, 7) : subDays(prev, 7)) : (dir === 'next' ? addMonths(prev, 1) : subMonths(prev, 1)));
             const handleAddTask = (e) => { e.preventDefault(); if (!inputValue.trim()) return; updateWordFreq(inputValue); setTasks(prev => [{ id: generateId(), title: inputValue, completed: false, priority: selectedCategory, createdAt: new Date(), duration: 60, scheduledFor: null }, ...prev]); setInputValue(''); };
-            
             const handleSaveItem = () => { 
                 if(!activeItem) return; 
                 const taskPayload = { id: activeItem.taskId || activeItem.id, title: activeItem.title, completed: activeItem.completed || false, priority: activeItem.priority || 'medium', location: activeItem.location||'', person: activeItem.person||'', duration: activeItem.duration || 60 };
